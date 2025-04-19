@@ -1,8 +1,8 @@
 
-import { Doughnut } from 'recharts';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
+import { PieChart, Pie, Cell } from 'recharts';
 
 const PortfolioOverview = () => {
   const portfolioValue = 28654.32;
@@ -42,7 +42,11 @@ const PortfolioOverview = () => {
                 <Progress 
                   value={item.value} 
                   className="h-2" 
-                  indicatorClassName={`bg-gradient-to-r from-nebula-500 to-cosmic-500`} 
+                  // Fixed the error by removing the indicatorClassName prop
+                  // and using style.backgroundColor instead
+                  style={{ 
+                    '--progress-background': 'linear-gradient(to right, #8B5CF6, #3B82F6)'
+                  } as React.CSSProperties}
                 />
               </div>
             ))}
@@ -62,16 +66,21 @@ const PortfolioOverview = () => {
         </CardHeader>
         <CardContent className="flex justify-center">
           <div className="w-48 h-48 relative">
-            <Doughnut
-              data={portfolioData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              paddingAngle={5}
-            />
+            <PieChart width={200} height={200}>
+              <Pie
+                data={portfolioData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {portfolioData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+            </PieChart>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <TrendingUp className="h-6 w-6 text-nebula-400" />
               <span className="mt-1 font-roboto-mono text-sm">Total</span>
