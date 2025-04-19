@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, MoveVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +11,13 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '@/components/ui/pagination';
 
 interface Token {
   id: string;
@@ -54,16 +60,19 @@ const mockTokens: Token[] = [
   { id: '25', name: 'WEN', symbol: 'WEN', price: 0.00057, change24h: 24.8, marketCap: 4800000, volume: 1320000, allocation: 3, category: 'meme' },
 ];
 
-const TokenTable = ({ category = "ai" }: { category?: string }) => {
+const ITEMS_PER_PAGE = 10;
+
+const TokenTable = ({ category = "all" }: { category?: string }) => {
   const [sortField, setSortField] = useState<keyof Token>('allocation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
   
   const filteredTokens = category === 'all' 
     ? mockTokens 
-    : mockTokens.filter(token => token.category === category || 
-        (category === 'l1' && token.category.includes('l1')) ||
-        (category === 'defi' && token.category.includes('defi'))
-      );
+    : mockTokens.filter(token => {
+        const tokenCategories = token.category.split('/');
+        return tokenCategories.some(cat => cat.toLowerCase() === category.toLowerCase());
+      });
   
   const sortedTokens = [...filteredTokens].sort((a, b) => {
     if (sortDirection === 'asc') {
@@ -72,7 +81,13 @@ const TokenTable = ({ category = "ai" }: { category?: string }) => {
       return a[sortField] < b[sortField] ? 1 : -1;
     }
   });
-  
+
+  const totalPages = Math.ceil(sortedTokens.length / ITEMS_PER_PAGE);
+  const paginatedTokens = sortedTokens.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const handleSort = (field: keyof Token) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -94,11 +109,11 @@ const TokenTable = ({ category = "ai" }: { category?: string }) => {
 
   const getCategoryTitle = () => {
     switch(category) {
-      case 'ai': return 'AI Tokens';
-      case 'meme': return 'Meme Tokens';
+      case 'ai': return 'AI & DeFi Tokens';
+      case 'meme': return 'Meme & NFT Tokens';
       case 'rwa': return 'Real World Assets';
       case 'bigcap': return 'Big Cap Tokens';
-      case 'defi': return 'DeFi Tokens';
+      case 'defi': return 'DeFi Protocols';
       case 'l1': return 'Layer 1 Protocols';
       case 'stablecoin': return 'Stablecoins';
       default: return 'All Tokens';
@@ -133,8 +148,9 @@ const TokenTable = ({ category = "ai" }: { category?: string }) => {
                 </TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {sortedTokens.map((token) => (
+              {paginatedTokens.map((token) => (
                 <TableRow key={token.id}>
                   <TableCell>
                     <div className="flex items-center space-x-2">
@@ -169,6 +185,32 @@ const TokenTable = ({ category = "ai" }: { category?: string }) => {
               ))}
             </TableBody>
           </Table>
+
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="px-4 py-2">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

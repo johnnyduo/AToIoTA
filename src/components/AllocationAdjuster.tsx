@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -16,13 +15,13 @@ interface AllocationCategory {
 const AllocationAdjuster = () => {
   const { toast } = useToast();
   const [categories, setCategories] = useState<AllocationCategory[]>([
-    { id: 'ai', name: 'AI', color: '#8B5CF6', currentAllocation: 8, newAllocation: 8 },
-    { id: 'meme', name: 'Meme', color: '#EC4899', currentAllocation: 22, newAllocation: 22 },
-    { id: 'rwa', name: 'RWA', color: '#0EA5E9', currentAllocation: 11, newAllocation: 11 },
-    { id: 'bigcap', name: 'Big Cap', color: '#10B981', currentAllocation: 40, newAllocation: 40 },
-    { id: 'defi', name: 'DeFi', color: '#F59E0B', currentAllocation: 14, newAllocation: 14 },
-    { id: 'l1', name: 'Layer 1', color: '#EF4444', currentAllocation: 11, newAllocation: 11 },
-    { id: 'stablecoin', name: 'Stablecoins', color: '#14B8A6', currentAllocation: 6, newAllocation: 6 },
+    { id: 'ai', name: 'AI & DeFi', color: '#8B5CF6', currentAllocation: 15, newAllocation: 15 },
+    { id: 'meme', name: 'Meme & NFT', color: '#EC4899', currentAllocation: 10, newAllocation: 10 },
+    { id: 'rwa', name: 'RWA', color: '#0EA5E9', currentAllocation: 15, newAllocation: 15 },
+    { id: 'bigcap', name: 'Big Cap', color: '#10B981', currentAllocation: 25, newAllocation: 25 },
+    { id: 'defi', name: 'DeFi', color: '#F59E0B', currentAllocation: 15, newAllocation: 15 },
+    { id: 'l1', name: 'Layer 1', color: '#EF4444', currentAllocation: 15, newAllocation: 15 },
+    { id: 'stablecoin', name: 'Stablecoins', color: '#14B8A6', currentAllocation: 5, newAllocation: 5 },
   ]);
   
   const [isBalanced, setIsBalanced] = useState(true);
