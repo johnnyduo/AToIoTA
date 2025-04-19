@@ -1,6 +1,6 @@
 
 import React, { Suspense } from 'react';
-import { Helmet } from 'react-helmet-async'; // Use react-helmet-async for better React compatibility
+import { Helmet } from 'react-helmet-async';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
 import CategorySelector from '@/components/CategorySelector';
