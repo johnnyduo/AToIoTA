@@ -16,7 +16,8 @@ import {
   PaginationContent, 
   PaginationItem, 
   PaginationNext, 
-  PaginationPrevious 
+  PaginationPrevious,
+  PaginationLink
 } from '@/components/ui/pagination';
 
 interface Token {
@@ -119,6 +120,14 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
       default: return 'All Tokens';
     }
   };
+
+  const goToPreviousPage = () => {
+    setCurrentPage(p => Math.max(1, p - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage(p => Math.min(totalPages, p + 1));
+  };
   
   return (
     <Card className="card-glass">
@@ -191,10 +200,16 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    />
+                    {currentPage === 1 ? (
+                      <PaginationLink
+                        aria-disabled="true"
+                        className="opacity-50 pointer-events-none"
+                      >
+                        Previous
+                      </PaginationLink>
+                    ) : (
+                      <PaginationPrevious onClick={goToPreviousPage} />
+                    )}
                   </PaginationItem>
                   <PaginationItem>
                     <span className="px-4 py-2">
@@ -202,10 +217,16 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                     </span>
                   </PaginationItem>
                   <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    />
+                    {currentPage === totalPages ? (
+                      <PaginationLink
+                        aria-disabled="true"
+                        className="opacity-50 pointer-events-none"
+                      >
+                        Next
+                      </PaginationLink>
+                    ) : (
+                      <PaginationNext onClick={goToNextPage} />
+                    )}
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
