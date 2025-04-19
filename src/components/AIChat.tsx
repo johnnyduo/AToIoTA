@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, BarChart2, ArrowRight } from 'lucide-react';
+import { Send, Bot, User, BarChart2, ArrowRight, TrendingUp, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,50 @@ interface ChatMessage {
   };
 }
 
+// Market intelligence data for AI suggestions
+const marketInsights = [
+  {
+    type: 'trending',
+    content: "Based on on-chain data analysis, DEEP (AI) is showing a significant increase in whale accumulation. Three addresses have accumulated over $2.7M in the last 48 hours. Consider increasing your AI allocation by 5%.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase AI allocation by 5%'
+    }
+  },
+  {
+    type: 'volume',
+    content: "HODLHamster is experiencing abnormal trading volume, up 320% in the last 24 hours. Social sentiment analysis shows this meme coin trending across major platforms. Consider a small speculative position of 2%.",
+    action: {
+      type: 'trade',
+      description: 'Add 2% HODLHamster position'
+    }
+  },
+  {
+    type: 'news',
+    content: "Breaking: ShimmerSea DEX volume has increased 78% following the SMR price rally. According to our technical analysis, the MLUM token is currently undervalued based on TVL metrics. Consider increasing your DeFi exposure.",
+    action: {
+      type: 'analysis',
+      description: 'View DeFi Analysis Report'
+    }
+  },
+  {
+    type: 'technical',
+    content: "Technical analysis suggests wBTC is forming a bullish consolidation pattern with decreasing sell pressure. With traditional markets showing uncertainty, increasing your Bitcoin exposure may provide a hedge. Recommend 3% allocation shift from stablecoins to wBTC.",
+    action: {
+      type: 'rebalance',
+      description: 'Move 3% from stablecoins to wBTC'
+    }
+  },
+  {
+    type: 'risk',
+    content: "Risk assessment alert: Your portfolio exposure to meme tokens (22%) exceeds recommended thresholds. Consider rebalancing to reduce volatility, particularly with BEAST token showing signs of distribution by early investors.",
+    action: {
+      type: 'protection',
+      description: 'Reduce meme token exposure'
+    }
+  }
+];
+
 const AIChat = () => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -25,18 +69,52 @@ const AIChat = () => {
     {
       id: '1',
       sender: 'ai',
-      content: 'Hello! I\'m your DeFAI assistant. I can help you manage your portfolio, provide market insights, and execute trades for you. How can I help you today?',
+      content: 'Hello! I\'m your DeFAI assistant. I can help you manage your portfolio, provide market insights, and suggest optimal allocations. How can I assist you today?',
       timestamp: new Date(),
     }
   ]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
+  // Auto-send an AI insight after component mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
+      triggerAIInsight(randomInsight);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  const triggerAIInsight = (insight: any) => {
+    setIsTyping(true);
+    
+    // Simulate AI working on analysis
+    setTimeout(() => {
+      const aiMessage: ChatMessage = {
+        id: Date.now().toString(),
+        sender: 'ai',
+        content: `📊 **AI Market Intelligence Alert**\n\n${insight.content}`,
+        timestamp: new Date(),
+        action: insight.action
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+      
+      // Show toast notification
+      toast({
+        title: "New AI Market Intelligence",
+        description: "Portfolio analysis has discovered a new opportunity",
+      });
+    }, 1000);
+  };
   
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -61,30 +139,55 @@ const AIChat = () => {
         aiResponse = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          content: 'I can help you rebalance your portfolio. Based on recent market conditions, I recommend increasing your allocation to AI tokens by 5% and reducing your exposure to Meme tokens. Would you like me to make these changes for you?',
+          content: 'Based on current market conditions and on-chain data, I recommend the following portfolio adjustments:\n\n• Increase AI tokens allocation by 5% (focusing on DEEP)\n• Reduce meme token exposure by 3%\n• Add 2% to Layer 1 protocols (SMR showing strong fundamentals)\n• Maintain current stablecoin reserves as market volatility index is elevated\n\nThis rebalancing would optimize your risk-adjusted returns based on the latest market trends.',
           timestamp: new Date(),
           action: {
             type: 'rebalance',
-            description: 'Rebalance portfolio: +5% AI, -5% Meme'
+            description: 'Apply recommended rebalance'
           }
         };
-      } else if (message.toLowerCase().includes('market') || message.toLowerCase().includes('trend')) {
+      } else if (message.toLowerCase().includes('trend') || message.toLowerCase().includes('market')) {
         aiResponse = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          content: 'Current market trends show increased institutional interest in AI tokens, with Neural Network (NNET) showing strong momentum. The meme sector is experiencing high volatility with Doge Moon (DMOON) up 45.2% in the last 24 hours. Would you like me to show you a detailed analysis?',
+          content: 'Latest market analysis reveals several key trends:\n\n1. AI tokens showing strong momentum with institutional inflows\n2. HODLHamster (meme) has surged 78.3% with abnormal social volume\n3. Layer 1 protocols experiencing renewed interest with SMR leading at +7.5%\n4. DeFi sector stabilizing with positive yield trends\n\nWhale addresses are accumulating DEEP and SMR according to on-chain data, suggesting potential continued upside.',
           timestamp: new Date(),
           action: {
             type: 'analysis',
-            description: 'View Market Analysis'
+            description: 'View Detailed Market Analysis'
           }
         };
-      } else {
+      } else if (message.toLowerCase().includes('ai') || message.toLowerCase().includes('deep')) {
         aiResponse = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          content: 'I understand you\'re interested in optimizing your investment strategy. Based on your portfolio, I recommend focusing on AI tokens which are showing strong fundamentals. Would you like me to provide specific token recommendations?',
+          content: 'DEEP is showing strong fundamentals with several bullish indicators:\n\n• Developer activity up 34% month-over-month\n• New partnership with major AI research firm announced\n• Social sentiment analysis highly positive (89/100)\n• Technical indicators: MACD bullish crossover, RSI at 62\n\nBased on quantitative analysis, DEEP has a 73% probability of outperforming the broader market in the coming month. Consider increasing your allocation.',
           timestamp: new Date(),
+          action: {
+            type: 'trade',
+            description: 'Increase DEEP allocation'
+          }
+        };
+      } else if (message.toLowerCase().includes('meme') || message.toLowerCase().includes('risk')) {
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          content: 'Risk assessment for meme token category:\n\nYour current allocation (22%) exceeds our recommended threshold of 15% for speculative assets. While HODLHamster and PUNK show strong momentum, the sector volatility is 3.2x higher than other categories.\n\nSuggestion: Consider taking profits on BEAST token which shows distribution patterns from early investors and potential technical weakness.',
+          timestamp: new Date(),
+          action: {
+            type: 'protection',
+            description: 'Reduce meme token risk'
+          }
+        };
+      } else {
+        // Get random insight for other queries
+        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          content: `Based on your query, I've analyzed the current market conditions and found this insight:\n\n${randomInsight.content}`,
+          timestamp: new Date(),
+          action: randomInsight.action
         };
       }
       
@@ -98,6 +201,14 @@ const AIChat = () => {
       title: "Action Triggered",
       description: action.description,
     });
+    
+    // If it's a market analysis action, send another insight after a delay
+    if (action.type === 'analysis') {
+      setTimeout(() => {
+        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
+        triggerAIInsight(randomInsight);
+      }, 4000);
+    }
   };
   
   return (
@@ -135,7 +246,10 @@ const AIChat = () => {
                       className="mt-3 bg-white/10 hover:bg-white/20 text-xs"
                       onClick={() => handleActionClick(msg.action)}
                     >
-                      {msg.action.type === 'rebalance' ? <BarChart2 className="mr-1 h-3 w-3" /> : <ArrowRight className="mr-1 h-3 w-3" />}
+                      {msg.action.type === 'rebalance' ? <BarChart2 className="mr-1 h-3 w-3" /> : 
+                       msg.action.type === 'analysis' ? <Search className="mr-1 h-3 w-3" /> :
+                       msg.action.type === 'trade' ? <TrendingUp className="mr-1 h-3 w-3" /> :
+                       <ArrowRight className="mr-1 h-3 w-3" />}
                       {msg.action.description}
                     </Button>
                   )}
@@ -165,7 +279,7 @@ const AIChat = () => {
       <CardFooter className="p-4 border-t border-[#ffffff1a]">
         <div className="flex w-full space-x-2">
           <Input
-            placeholder="Ask DeFAI assistant..."
+            placeholder="Ask DeFAI assistant about market trends, tokens, or portfolio advice..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}

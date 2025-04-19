@@ -10,10 +10,13 @@ const PortfolioOverview = () => {
   const isPositive = portfolioChange > 0;
   
   const portfolioData = [
-    { name: 'AI', value: 35, color: '#8B5CF6' },
-    { name: 'Meme', value: 20, color: '#EC4899' },
-    { name: 'RWA', value: 25, color: '#0EA5E9' },
-    { name: 'Big Cap', value: 20, color: '#10B981' },
+    { name: 'AI', value: 8, color: '#8B5CF6' },
+    { name: 'Meme', value: 22, color: '#EC4899' },
+    { name: 'RWA', value: 11, color: '#0EA5E9' },
+    { name: 'Big Cap', value: 40, color: '#10B981' },
+    { name: 'DeFi', value: 14, color: '#F59E0B' },
+    { name: 'Layer 1', value: 11, color: '#EF4444' },
+    { name: 'Stablecoins', value: 6, color: '#14B8A6' },
   ];
   
   return (
@@ -42,8 +45,6 @@ const PortfolioOverview = () => {
                 <Progress 
                   value={item.value} 
                   className="h-2" 
-                  // Fixed the error by removing the indicatorClassName prop
-                  // and using style.backgroundColor instead
                   style={{ 
                     '--progress-background': 'linear-gradient(to right, #8B5CF6, #3B82F6)'
                   } as React.CSSProperties}

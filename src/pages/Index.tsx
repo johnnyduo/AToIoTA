@@ -28,7 +28,7 @@ const Dashboard = () => {
             <CategorySelector />
           </div>
           
-          <TokenTable category="ai" />
+          <TokenTable category="all" />
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AIChat />
