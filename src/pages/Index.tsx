@@ -1,6 +1,6 @@
 
-import { Suspense } from 'react';
-import { Helmet } from 'react-helmet';
+import React, { Suspense } from 'react';
+import { Helmet } from 'react-helmet-async'; // Use react-helmet-async for better React compatibility
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
 import CategorySelector from '@/components/CategorySelector';
@@ -14,7 +14,10 @@ const Dashboard = () => {
     <>
       <Helmet>
         <title>DeFAI Navigator | IOTA EVM Investment Portfolio</title>
-        <meta name="description" content="AI-powered DeFi investment portfolio navigator for the IOTA EVM network" />
+        <meta 
+          name="description" 
+          content="AI-powered DeFi investment portfolio navigator for the IOTA EVM network" 
+        />
       </Helmet>
       <Layout>
         <div className="space-y-6">
