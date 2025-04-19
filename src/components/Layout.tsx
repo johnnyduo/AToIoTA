@@ -3,6 +3,8 @@ import { ReactNode } from 'react';
 import DashboardHeader from './DashboardHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LayoutDashboard, MessageCircle, Settings } from 'lucide-react';
+import AIChat from './AIChat';
+import AllocationAdjuster from './AllocationAdjuster';
 
 interface LayoutProps {
   children: ReactNode;
