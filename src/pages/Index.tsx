@@ -1,13 +1,12 @@
-
 import React, { Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
-import CategorySelector from '@/components/CategorySelector';
 import TokenTable from '@/components/TokenTable';
 import PerformanceChart from '@/components/PerformanceChart';
 import AIChat from '@/components/AIChat';
 import AllocationAdjuster from '@/components/AllocationAdjuster';
+import YieldComparison from '@/components/YieldComparison';
 
 const Dashboard = () => {
   return (
@@ -25,15 +24,10 @@ const Dashboard = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PerformanceChart />
-            <CategorySelector />
+            <YieldComparison />
           </div>
           
           <TokenTable category="all" />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AIChat />
-            <AllocationAdjuster />
-          </div>
         </div>
       </Layout>
     </>

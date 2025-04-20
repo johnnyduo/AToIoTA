@@ -32,6 +32,16 @@ interface Token {
   category: string;
 }
 
+const categoryColors: { [key: string]: string } = {
+  meme: '#EC4899',     // Pink
+  rwa: '#0EA5E9',      // Blue
+  bigcap: '#10B981',   // Green
+  defi: '#F97316',     // Orange
+  l1: '#8B5CF6',       // Purple
+  stablecoin: '#14B8A6', // Teal
+  ai: '#D946EF'        // Magenta
+};
+
 // Updated token data based on the provided list
 const mockTokens: Token[] = [
   { id: '1', name: 'PUNKS', symbol: 'PUNK', price: 0.052, change24h: 12.7, marketCap: 32000000, volume: 8700000, allocation: 6, category: 'meme' },
@@ -168,7 +178,18 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                       </div>
                       <div>
                         <div className="font-medium">{token.name}</div>
-                        <div className="text-xs text-muted-foreground font-roboto-mono">{token.symbol}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-muted-foreground font-roboto-mono">{token.symbol}</span>
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{ 
+                              backgroundColor: `${categoryColors[token.category]}20`,
+                              color: categoryColors[token.category]
+                            }}
+                          >
+                            {token.category.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </TableCell>
