@@ -16,10 +16,10 @@ const DashboardHeader = () => {
   return (
     <div className="flex items-center justify-between py-6 px-8">
       <div className="flex items-center space-x-3">
-        <div className="h-12 w-12 rounded-full bg-gradient-nebula flex items-center justify-center animate-pulse-glow">
-          <span className="font-space text-white text-2xl font-bold">D</span>
+        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center animate-pulse-glow">
+          <span className="font-space text-white text-2xl font-bold">A</span>
         </div>
-        <h1 className="text-3xl font-bold font-space cosmic-text">DeFAI Navigator</h1>
+        <h1 className="text-3xl font-bold font-space cosmic-text">AToIoTA</h1>
       </div>
       
       <div className="flex items-center space-x-4">

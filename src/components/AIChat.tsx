@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
+import AdjustmentModal from './AdjustmentModal';
 
 interface ChatMessage {
   id: string;
@@ -15,6 +16,12 @@ interface ChatMessage {
   action?: {
     type: string;
     description: string;
+    changes?: {
+      category: string;
+      name: string;
+      from: number;
+      to: number;
+    }[];
   };
 }
 
@@ -25,7 +32,11 @@ const marketInsights = [
     content: "Based on on-chain data analysis, DEEP (AI) is showing a significant increase in whale accumulation. Three addresses have accumulated over $2.7M in the last 48 hours. Consider increasing your AI allocation by 5%.",
     action: {
       type: 'rebalance',
-      description: 'Increase AI allocation by 5%'
+      description: 'Increase AI allocation based on whale accumulation data',
+      changes: [
+        { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 }
+      ]
     }
   },
   {
@@ -33,7 +44,11 @@ const marketInsights = [
     content: "HODLHamster is experiencing abnormal trading volume, up 320% in the last 24 hours. Social sentiment analysis shows this meme coin trending across major platforms. Consider a small speculative position of 2%.",
     action: {
       type: 'trade',
-      description: 'Add 2% HODLHamster position'
+      description: 'Add HODLHamster position based on volume and sentiment analysis',
+      changes: [
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 12 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 3 }
+      ]
     }
   },
   {
@@ -41,7 +56,7 @@ const marketInsights = [
     content: "Breaking: ShimmerSea DEX volume has increased 78% following the SMR price rally. According to our technical analysis, the MLUM token is currently undervalued based on TVL metrics. Consider increasing your DeFi exposure.",
     action: {
       type: 'analysis',
-      description: 'View DeFi Analysis Report'
+      description: 'View detailed DeFi Analysis Report for ShimmerSea ecosystem'
     }
   },
   {
@@ -49,7 +64,11 @@ const marketInsights = [
     content: "Technical analysis suggests wBTC is forming a bullish consolidation pattern with decreasing sell pressure. With traditional markets showing uncertainty, increasing your Bitcoin exposure may provide a hedge. Recommend 3% allocation shift from stablecoins to wBTC.",
     action: {
       type: 'rebalance',
-      description: 'Move 3% from stablecoins to wBTC'
+      description: 'Shift allocation from stablecoins to Bitcoin based on technical analysis',
+      changes: [
+        { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 2 }
+      ]
     }
   },
   {
@@ -57,7 +76,12 @@ const marketInsights = [
     content: "Risk assessment alert: Your portfolio exposure to meme tokens (22%) exceeds recommended thresholds. Consider rebalancing to reduce volatility, particularly with BEAST token showing signs of distribution by early investors.",
     action: {
       type: 'protection',
-      description: 'Reduce meme token exposure'
+      description: 'Reduce meme token exposure to mitigate volatility risk',
+      changes: [
+        { category: 'meme', name: 'Meme & NFT', from: 22, to: 15 },
+        { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 9 }
+      ]
     }
   }
 ];
@@ -69,10 +93,12 @@ const AIChat = () => {
     {
       id: '1',
       sender: 'ai',
-      content: 'Hello! I\'m your DeFAI assistant. I can help you manage your portfolio, provide market insights, and suggest optimal allocations. How can I assist you today?',
+      content: 'Hello! I\'m your AToIoTA assistant. I can help you manage your portfolio, provide market insights, and suggest optimal allocations. How can I assist you today?',
       timestamp: new Date(),
     }
   ]);
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [currentAction, setCurrentAction] = useState<any>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -143,7 +169,13 @@ const AIChat = () => {
           timestamp: new Date(),
           action: {
             type: 'rebalance',
-            description: 'Apply recommended rebalance'
+            description: 'Apply recommended portfolio rebalance',
+            changes: [
+              { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
+              { category: 'meme', name: 'Meme & NFT', from: 10, to: 7 },
+              { category: 'l1', name: 'Layer 1', from: 15, to: 17 },
+              { category: 'defi', name: 'DeFi', from: 15, to: 11 }
+            ]
           }
         };
       } else if (message.toLowerCase().includes('trend') || message.toLowerCase().includes('market')) {
@@ -165,7 +197,11 @@ const AIChat = () => {
           timestamp: new Date(),
           action: {
             type: 'trade',
-            description: 'Increase DEEP allocation'
+            description: 'Increase DEEP allocation',
+            changes: [
+              { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
+              { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 }
+            ]
           }
         };
       } else if (message.toLowerCase().includes('meme') || message.toLowerCase().includes('risk')) {
@@ -176,7 +212,12 @@ const AIChat = () => {
           timestamp: new Date(),
           action: {
             type: 'protection',
-            description: 'Reduce meme token risk'
+            description: 'Reduce meme token risk',
+            changes: [
+              { category: 'meme', name: 'Meme & NFT', from: 22, to: 15 },
+              { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
+              { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 9 }
+            ]
           }
         };
       } else {
@@ -197,10 +238,15 @@ const AIChat = () => {
   };
   
   const handleActionClick = (action: any) => {
-    toast({
-      title: "Action Triggered",
-      description: action.description,
-    });
+    if (action.changes) {
+      setCurrentAction(action);
+      setAdjustmentOpen(true);
+    } else {
+      toast({
+        title: "Action Triggered",
+        description: action.description,
+      });
+    }
     
     // If it's a market analysis action, send another insight after a delay
     if (action.type === 'analysis') {
@@ -212,90 +258,98 @@ const AIChat = () => {
   };
   
   return (
-    <Card className="card-glass overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-2xl flex items-center">
-          <Bot className="mr-2 h-6 w-6 text-nebula-400" />
-          DeFAI Assistant
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <ScrollArea className="h-[400px] p-6" ref={scrollAreaRef}>
-          <div className="space-y-4">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] ${msg.sender === 'user' ? 'bg-nebula-800' : 'bg-cosmic-700'} rounded-2xl p-4`}>
-                  <div className="flex items-center mb-2">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                      msg.sender === 'user' ? 'bg-nebula-600' : 'bg-gradient-nebula'
-                    }`}>
-                      {msg.sender === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+    <>
+      <Card className="card-glass overflow-hidden">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center">
+            <Bot className="mr-2 h-6 w-6 text-nebula-400" />
+            AToIoTA Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="h-[400px] p-6" ref={scrollAreaRef}>
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] ${msg.sender === 'user' ? 'bg-nebula-800' : 'bg-cosmic-700'} rounded-2xl p-4`}>
+                    <div className="flex items-center mb-2">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                        msg.sender === 'user' ? 'bg-nebula-600' : 'bg-gradient-nebula'
+                      }`}>
+                        {msg.sender === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                      </div>
+                      <span className="ml-2 font-medium">
+                        {msg.sender === 'user' ? 'You' : 'AToIoTA Assistant'}
+                      </span>
+                      <span className="ml-auto text-xs text-muted-foreground font-roboto-mono">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
-                    <span className="ml-2 font-medium">
-                      {msg.sender === 'user' ? 'You' : 'DeFAI Assistant'}
-                    </span>
-                    <span className="ml-auto text-xs text-muted-foreground font-roboto-mono">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  {msg.action && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-3 bg-white/10 hover:bg-white/20 text-xs"
-                      onClick={() => handleActionClick(msg.action)}
-                    >
-                      {msg.action.type === 'rebalance' ? <BarChart2 className="mr-1 h-3 w-3" /> : 
-                       msg.action.type === 'analysis' ? <Search className="mr-1 h-3 w-3" /> :
-                       msg.action.type === 'trade' ? <TrendingUp className="mr-1 h-3 w-3" /> :
-                       <ArrowRight className="mr-1 h-3 w-3" />}
-                      {msg.action.description}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-cosmic-700 rounded-2xl p-4 max-w-[80%]">
-                  <div className="flex items-center">
-                    <div className="h-8 w-8 rounded-full bg-gradient-nebula flex items-center justify-center">
-                      <Bot className="h-4 w-4" />
-                    </div>
-                    <span className="ml-2 font-medium">DeFAI Assistant</span>
-                  </div>
-                  <div className="flex space-x-1 mt-2">
-                    <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse"></div>
-                    <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.action && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-3 bg-white/10 hover:bg-white/20 text-xs"
+                        onClick={() => handleActionClick(msg.action)}
+                      >
+                        {msg.action.type === 'rebalance' ? <BarChart2 className="mr-1 h-3 w-3" /> : 
+                         msg.action.type === 'analysis' ? <Search className="mr-1 h-3 w-3" /> :
+                         msg.action.type === 'trade' ? <TrendingUp className="mr-1 h-3 w-3" /> :
+                         <ArrowRight className="mr-1 h-3 w-3" />}
+                        {msg.action.description}
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-cosmic-700 rounded-2xl p-4 max-w-[80%]">
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-gradient-nebula flex items-center justify-center">
+                        <Bot className="h-4 w-4" />
+                      </div>
+                      <span className="ml-2 font-medium">AToIoTA Assistant</span>
+                    </div>
+                    <div className="flex space-x-1 mt-2">
+                      <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse"></div>
+                      <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="h-2 w-2 bg-nebula-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+        <CardFooter className="p-4 border-t border-[#ffffff1a]">
+          <div className="flex w-full space-x-2">
+            <Input
+              placeholder="Ask AToIoTA assistant about market trends, tokens, or portfolio advice..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              className="input-dark"
+            />
+            <Button 
+              className="bg-gradient-button hover:opacity-90" 
+              size="icon" 
+              onClick={handleSendMessage}
+              disabled={isTyping || !message.trim()}
+            >
+              <Send className="h-5 w-5" />
+            </Button>
           </div>
-        </ScrollArea>
-      </CardContent>
-      <CardFooter className="p-4 border-t border-[#ffffff1a]">
-        <div className="flex w-full space-x-2">
-          <Input
-            placeholder="Ask DeFAI assistant about market trends, tokens, or portfolio advice..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            className="input-dark"
-          />
-          <Button 
-            className="bg-gradient-button hover:opacity-90" 
-            size="icon" 
-            onClick={handleSendMessage}
-            disabled={isTyping || !message.trim()}
-          >
-            <Send className="h-5 w-5" />
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+        </CardFooter>
+      </Card>
+
+      <AdjustmentModal 
+        open={adjustmentOpen} 
+        onOpenChange={setAdjustmentOpen} 
+        action={currentAction}
+      />
+    </>
   );
 };
 

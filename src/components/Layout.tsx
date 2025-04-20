@@ -1,5 +1,5 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LayoutDashboard, MessageCircle, Settings } from 'lucide-react';
@@ -11,12 +11,14 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  
   return (
     <div className="min-h-screen flex flex-col">
       <DashboardHeader />
       
       <main className="flex-1 container mx-auto py-6 pb-16">
-        <Tabs defaultValue="dashboard" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex justify-center mb-6">
             <TabsList className="grid grid-cols-3 w-80">
               <TabsTrigger value="dashboard" className="flex items-center">
