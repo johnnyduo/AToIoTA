@@ -1,7 +1,7 @@
 // src/components/DashboardHeader.tsx
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ConnectWallet from '@/components/ConnectWallet'; // Use the correct import path
+import WalletConnect from '@/components/WalletConnect';
 
 const DashboardHeader = () => {
   return (
@@ -19,7 +19,7 @@ const DashboardHeader = () => {
           <span className="absolute top-0 right-0 h-2 w-2 bg-destructive rounded-full"></span>
         </Button>
         
-        <ConnectWallet />
+        <WalletConnect />
       </div>
     </div>
   );
