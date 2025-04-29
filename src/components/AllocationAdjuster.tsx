@@ -1,8 +1,13 @@
-import { useState } from 'react';
+// src/components/AllocationAdjuster.tsx
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useAccount } from 'wagmi';
+import { useBlockchain } from '@/contexts/BlockchainContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AllocationCategory {
   id: string;
@@ -14,31 +19,66 @@ interface AllocationCategory {
 
 const AllocationAdjuster = () => {
   const { toast } = useToast();
-  const [categories, setCategories] = useState<AllocationCategory[]>([
-    { id: 'ai', name: 'AI & DeFi', color: '#8B5CF6', currentAllocation: 15, newAllocation: 15 },
-    { id: 'meme', name: 'Meme & NFT', color: '#EC4899', currentAllocation: 10, newAllocation: 10 },
-    { id: 'rwa', name: 'RWA', color: '#0EA5E9', currentAllocation: 15, newAllocation: 15 },
-    { id: 'bigcap', name: 'Big Cap', color: '#10B981', currentAllocation: 25, newAllocation: 25 },
-    { id: 'defi', name: 'DeFi', color: '#F59E0B', currentAllocation: 15, newAllocation: 15 },
-    { id: 'l1', name: 'Layer 1', color: '#EF4444', currentAllocation: 15, newAllocation: 15 },
-    { id: 'stablecoin', name: 'Stablecoins', color: '#14B8A6', currentAllocation: 5, newAllocation: 5 },
-  ]);
+  const { isConnected } = useAccount(); // Using wagmi's useAccount hook
+  const { 
+    allocations, 
+    pendingAllocations, 
+    setPendingAllocations, 
+    applyAllocations,
+    isLoadingAllocations,
+    isUpdatingAllocations
+  } = useBlockchain();
   
+  const [categories, setCategories] = useState<AllocationCategory[]>([]);
   const [isBalanced, setIsBalanced] = useState(true);
+  
+  // Initialize categories from blockchain data
+  useEffect(() => {
+    if (allocations.length > 0) {
+      if (pendingAllocations) {
+        // If there are pending changes, use those for new allocations
+        setCategories(allocations.map(item => {
+          const pendingItem = pendingAllocations.find(p => p.id === item.id);
+          return {
+            id: item.id,
+            name: item.name,
+            color: item.color,
+            currentAllocation: item.allocation,
+            newAllocation: pendingItem ? pendingItem.allocation : item.allocation
+          };
+        }));
+      } else {
+        // Otherwise use current allocations for both
+        setCategories(allocations.map(item => ({
+          id: item.id,
+          name: item.name,
+          color: item.color,
+          currentAllocation: item.allocation,
+          newAllocation: item.allocation
+        })));
+      }
+    }
+  }, [allocations, pendingAllocations]);
   
   const handleSliderChange = (index: number, value: number[]) => {
     const newCategories = [...categories];
-    const previousValue = newCategories[index].newAllocation;
-    const newValue = value[0];
-    const difference = newValue - previousValue;
-    
-    newCategories[index].newAllocation = newValue;
+    newCategories[index].newAllocation = value[0];
     
     // Check total allocation
     const total = newCategories.reduce((sum, cat) => sum + cat.newAllocation, 0);
-    
     setIsBalanced(total === 100);
+    
     setCategories(newCategories);
+    
+    // Update pending changes
+    const updatedPendingAllocations = newCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      color: cat.color,
+      allocation: cat.newAllocation
+    }));
+    
+    setPendingAllocations(updatedPendingAllocations);
   };
   
   const autoBalance = () => {
@@ -61,9 +101,28 @@ const AllocationAdjuster = () => {
     
     setCategories(newCategories);
     setIsBalanced(true);
+    
+    // Update pending changes
+    const updatedPendingAllocations = newCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      color: cat.color,
+      allocation: cat.newAllocation
+    }));
+    
+    setPendingAllocations(updatedPendingAllocations);
   };
   
-  const applyChanges = () => {
+  const handleApplyChanges = async () => {
+    if (!isConnected) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to update portfolio allocations.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!isBalanced) {
       toast({
         title: "Error",
@@ -73,20 +132,24 @@ const AllocationAdjuster = () => {
       return;
     }
     
-    // Here you would normally send these changes to your backend
-    toast({
-      title: "Changes Applied",
-      description: "Your new portfolio allocation has been saved.",
-    });
-    
-    // Update current allocations to match new allocations
-    setCategories(categories.map(cat => ({
-      ...cat,
-      currentAllocation: cat.newAllocation
-    })));
+    await applyAllocations();
   };
   
   const totalAllocation = categories.reduce((sum, cat) => sum + cat.newAllocation, 0);
+  
+  if (isLoadingAllocations) {
+    return (
+      <Card className="card-glass">
+        <CardHeader>
+          <CardTitle className="text-2xl">Adjust Portfolio Allocation</CardTitle>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-nebula-400" />
+          <span className="ml-2">Loading portfolio data...</span>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className="card-glass">
@@ -94,6 +157,15 @@ const AllocationAdjuster = () => {
         <CardTitle className="text-2xl">Adjust Portfolio Allocation</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {!isConnected && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please connect your wallet to update portfolio allocations.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {categories.map((category, index) => (
           <div key={category.id} className="space-y-2">
             <div className="flex items-center justify-between">
@@ -113,6 +185,7 @@ const AllocationAdjuster = () => {
               value={[category.newAllocation]}
               onValueChange={(value) => handleSliderChange(index, value)}
               className="cursor-pointer"
+              disabled={isUpdatingAllocations || !isConnected}
             />
           </div>
         ))}
@@ -136,13 +209,26 @@ const AllocationAdjuster = () => {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={autoBalance}>Auto Balance</Button>
+        <Button 
+          variant="outline" 
+          onClick={autoBalance}
+          disabled={isUpdatingAllocations || !isConnected}
+        >
+          Auto Balance
+        </Button>
         <Button 
           className="bg-gradient-button hover:opacity-90" 
-          onClick={applyChanges}
-          disabled={!isBalanced}
+          onClick={handleApplyChanges}
+          disabled={!isBalanced || isUpdatingAllocations || !isConnected}
         >
-          Apply Changes
+          {isUpdatingAllocations ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting to Blockchain...
+            </>
+          ) : (
+            "Apply Changes"
+          )}
         </Button>
       </CardFooter>
     </Card>
