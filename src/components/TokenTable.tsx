@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, MoveVertical } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ArrowUpRight, ArrowDownRight, MoveVertical, RefreshCw, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -19,6 +19,15 @@ import {
   PaginationPrevious,
   PaginationLink
 } from '@/components/ui/pagination';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { fetchTokenPrices, cacheTokenData, getCachedTokenData, TokenPrice } from '@/lib/tokenService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Token {
   id: string;
@@ -72,26 +81,164 @@ const mockTokens: Token[] = [
 ];
 
 const ITEMS_PER_PAGE = 10;
+const REFRESH_INTERVALS = {
+  AUTO: 300000, // 5 minutes auto-refresh
+  MANUAL: null  // Manual refresh only
+};
 
 const TokenTable = ({ category = "all" }: { category?: string }) => {
   const [sortField, setSortField] = useState<keyof Token>('allocation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [liveTokenData, setLiveTokenData] = useState<TokenPrice[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState<number | null>(REFRESH_INTERVALS.AUTO);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const { toast } = useToast();
   
-  const filteredTokens = category === 'all' 
-    ? mockTokens 
-    : mockTokens.filter(token => {
-        const tokenCategories = token.category.split('/');
-        return tokenCategories.some(cat => cat.toLowerCase() === category.toLowerCase());
-      });
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!refreshInterval) return;
+    
+    const intervalId = setInterval(() => {
+      refreshTokenData();
+    }, refreshInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [refreshInterval]);
   
-  const sortedTokens = [...filteredTokens].sort((a, b) => {
-    if (sortDirection === 'asc') {
-      return a[sortField] > b[sortField] ? 1 : -1;
-    } else {
-      return a[sortField] < b[sortField] ? 1 : -1;
+  // Toggle auto-refresh
+  const toggleAutoRefresh = () => {
+    const newState = !autoRefreshEnabled;
+    setAutoRefreshEnabled(newState);
+    setRefreshInterval(newState ? REFRESH_INTERVALS.AUTO : REFRESH_INTERVALS.MANUAL);
+    
+    toast({
+      title: newState ? 'Auto-refresh enabled' : 'Auto-refresh disabled',
+      description: newState 
+        ? 'Prices will update every 5 minutes' 
+        : 'Prices will only update when you click refresh',
+    });
+  };
+  
+  // Fetch token prices on component mount
+  useEffect(() => {
+    const loadTokenData = async () => {
+      // Check if we have cached data that's less than 5 minutes old
+      const { data: cachedData, timestamp } = getCachedTokenData();
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      
+      if (cachedData.length > 0) {
+        setLiveTokenData(cachedData);
+        setLastUpdated(new Date(timestamp));
+        
+        // Only fetch new data if cached data is older than 5 minutes
+        if (timestamp < fiveMinutesAgo) {
+          await refreshTokenData(false); // Silent refresh
+        }
+        return;
+      }
+      
+      // Otherwise fetch fresh data
+      await refreshTokenData(false); // Silent refresh
+    };
+    
+    loadTokenData();
+  }, []);
+  
+  // Function to refresh token data manually
+  const refreshTokenData = async (showToast = true) => {
+    setIsLoading(true);
+    try {
+      const data = await fetchTokenPrices();
+      if (data.length > 0) {
+        setLiveTokenData(data);
+        cacheTokenData(data);
+        setLastUpdated(new Date());
+        
+        if (showToast) {
+          toast({
+            title: 'Token prices updated',
+            description: 'Latest market data has been loaded successfully.',
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error refreshing token data:', error);
+      
+      // Handle rate limiting specifically
+      if (error.response && error.response.status === 429) {
+        toast({
+          title: 'Rate limit exceeded',
+          description: 'Please wait a moment before refreshing again.',
+          variant: 'destructive',
+        });
+      } else if (showToast) {
+        toast({
+          title: 'Update failed',
+          description: 'Could not refresh token prices. Please try again later.',
+          variant: 'destructive',
+        });
+      }
+      
+      // If fetch fails but we have cached data, keep using it
+      const { data: cachedData, timestamp } = getCachedTokenData();
+      if (cachedData.length > 0 && !liveTokenData.length) {
+        setLiveTokenData(cachedData);
+        setLastUpdated(new Date(timestamp));
+      }
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
+  
+  // Merge live token data with mock data
+  const mergedTokenData = () => {
+    if (liveTokenData.length === 0) return mockTokens;
+    
+    // Create a map of symbols to live data
+    const liveDataMap = new Map(liveTokenData.map(token => [
+      token.symbol.toUpperCase(),
+      token
+    ]));
+    
+    // Update mock tokens with live data where available
+    return mockTokens.map(token => {
+      const liveToken = liveDataMap.get(token.symbol.toUpperCase());
+      if (liveToken) {
+        return {
+          ...token,
+          price: liveToken.current_price,
+          change24h: liveToken.price_change_percentage_24h,
+          marketCap: liveToken.market_cap,
+          volume: liveToken.total_volume
+        };
+      }
+      return token;
+    });
+  };
+  
+  // Filter tokens based on category
+  const filteredTokens = useMemo(() => {
+    return category === 'all' 
+      ? mergedTokenData() 
+      : mergedTokenData().filter(token => {
+          const tokenCategories = token.category.split('/');
+          return tokenCategories.some(cat => cat.toLowerCase() === category.toLowerCase());
+        });
+  }, [category, liveTokenData]);
+  
+  // Sort tokens based on current sort field and direction
+  const sortedTokens = useMemo(() => {
+    return [...filteredTokens].sort((a, b) => {
+      if (sortDirection === 'asc') {
+        return a[sortField] > b[sortField] ? 1 : -1;
+      } else {
+        return a[sortField] < b[sortField] ? 1 : -1;
+      }
+    });
+  }, [filteredTokens, sortField, sortDirection]);
 
   const totalPages = Math.ceil(sortedTokens.length / ITEMS_PER_PAGE);
   const paginatedTokens = sortedTokens.slice(
@@ -139,10 +286,62 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
     setCurrentPage(p => Math.min(totalPages, p + 1));
   };
   
+  // Format the last updated time
+  const getLastUpdatedText = () => {
+    if (!lastUpdated) return 'Never updated';
+    
+    // If updated less than a minute ago, show "Just now"
+    const secondsAgo = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
+    if (secondsAgo < 60) return 'Just now';
+    
+    // If updated less than an hour ago, show minutes
+    const minutesAgo = Math.floor(secondsAgo / 60);
+    if (minutesAgo < 60) return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
+    
+    // Otherwise show the time
+    return lastUpdated.toLocaleTimeString();
+  };
+  
   return (
     <Card className="card-glass">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-2xl">{getCategoryTitle()}</CardTitle>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 mr-1" />
+                    <span>{getLastUpdatedText()}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Last updated: {lastUpdated?.toLocaleString() || 'Never'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="text-xs">Auto</span>
+            <Switch 
+              checked={autoRefreshEnabled} 
+              onCheckedChange={toggleAutoRefresh} 
+              aria-label="Toggle auto-refresh"
+            />
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refreshTokenData(true)} 
+            disabled={isLoading}
+          >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Updating...' : 'Refresh'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="rounded-md overflow-auto">
@@ -152,7 +351,13 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                 <TableHead className="w-[150px]">Name</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">
-                  <Button variant="ghost" size="sm" className="font-medium p-0" onClick={() => handleSort('change24h')}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-medium p-0" 
+                    onClick={() => handleSort('change24h')}
+                    aria-sort={sortField === 'change24h' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
                     24h Change 
                     <MoveVertical className="ml-1 h-3 w-3" />
                   </Button>
@@ -160,7 +365,13 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                 <TableHead className="text-right">Market Cap</TableHead>
                 <TableHead className="text-right">Volume (24h)</TableHead>
                 <TableHead className="text-right">
-                  <Button variant="ghost" size="sm" className="font-medium p-0" onClick={() => handleSort('allocation')}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-medium p-0" 
+                    onClick={() => handleSort('allocation')}
+                    aria-sort={sortField === 'allocation' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
                     Allocation
                     <MoveVertical className="ml-1 h-3 w-3" />
                   </Button>
@@ -199,7 +410,7 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                   <TableCell className="text-right">
                     <div className={`inline-flex items-center ${token.change24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {token.change24h > 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
-                      <span className="font-roboto-mono">{token.change24h > 0 ? '+' : ''}{token.change24h}%</span>
+                      <span className="font-roboto-mono">{token.change24h > 0 ? '+' : ''}{token.change24h.toFixed(2)}%</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-roboto-mono">
@@ -213,6 +424,14 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
                   </TableCell>
                 </TableRow>
               ))}
+              
+              {paginatedTokens.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No tokens found for this category
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
 

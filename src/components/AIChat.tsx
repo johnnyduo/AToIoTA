@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import AdjustmentModal from './AdjustmentModal';
+import { fetchTokenInsights } from '@/lib/tokenService';
 
 interface ChatMessage {
   id: string;
@@ -24,6 +25,9 @@ interface ChatMessage {
     }[];
   };
 }
+
+// Storage key for chat messages in localStorage
+const CHAT_STORAGE_KEY = 'atoiota_chat_messages';
 
 // Market intelligence data for AI suggestions
 const marketInsights = [
@@ -89,28 +93,66 @@ const marketInsights = [
 const AIChat = () => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      sender: 'ai',
-      content: 'Hello! I\'m your AToIoTA assistant. I can help you manage your portfolio, provide market insights, and suggest optimal allocations. How can I assist you today?',
-      timestamp: new Date(),
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const [currentAction, setCurrentAction] = useState<any>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Auto-send an AI insight after component mount
+  // Load chat messages from localStorage on component mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
-      triggerAIInsight(randomInsight);
-    }, 3000);
+    const savedMessages = localStorage.getItem(CHAT_STORAGE_KEY);
     
-    return () => clearTimeout(timer);
+    if (savedMessages) {
+      try {
+        // Parse the saved messages and convert timestamp strings back to Date objects
+        const parsedMessages = JSON.parse(savedMessages, (key, value) => {
+          if (key === 'timestamp') return new Date(value);
+          return value;
+        });
+        
+        setMessages(parsedMessages);
+      } catch (error) {
+        console.error('Error loading chat messages from localStorage:', error);
+        // If there's an error, initialize with the default welcome message
+        initializeDefaultMessage();
+      }
+    } else {
+      // If no saved messages, initialize with the default welcome message
+      initializeDefaultMessage();
+    }
   }, []);
+  
+  // Initialize with default welcome message
+  const initializeDefaultMessage = () => {
+    setMessages([
+      {
+        id: '1',
+        sender: 'ai',
+        content: 'Hello! I\'m your AToIoTA assistant. I can help you manage your portfolio, provide market insights, and suggest optimal allocations. How can I assist you today?',
+        timestamp: new Date(),
+      }
+    ]);
+  };
+  
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
+  
+  // Auto-send an AI insight after component mount if there are no messages
+  useEffect(() => {
+    if (messages.length <= 1) {
+      const timer = setTimeout(() => {
+        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
+        triggerAIInsight(randomInsight);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length]);
   
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -156,7 +198,36 @@ const AIChat = () => {
     setMessage('');
     setIsTyping(true);
     
-    // Simulate AI response after delay
+    // Check if the message is asking about a specific token price
+    const tokenPriceMatch = message.toLowerCase().match(/price\s+of\s+([a-z0-9]+)|([a-z0-9]+)\s+price|about\s+([a-z0-9]+)/i);
+    const tokenSymbol = tokenPriceMatch ? (tokenPriceMatch[1] || tokenPriceMatch[2] || tokenPriceMatch[3]).toUpperCase() : null;
+    
+    // If asking about a specific token and we have a Gemini API key, fetch insights
+    if (tokenSymbol && import.meta.env.VITE_GEMINI_API_KEY) {
+      try {
+        // Show typing indicator
+        setIsTyping(true);
+        
+        // Fetch token insights from Gemini API
+        const insights = await fetchTokenInsights(tokenSymbol);
+        
+        const aiResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          content: insights,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+        setIsTyping(false);
+        return;
+      } catch (error) {
+        console.error('Error fetching token insights:', error);
+        // Fall back to pattern matching if API call fails
+      }
+    }
+    
+    // Simulate AI response after delay (fallback to pattern matching)
     setTimeout(() => {
       let aiResponse: ChatMessage;
       
