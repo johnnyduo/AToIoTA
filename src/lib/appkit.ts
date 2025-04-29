@@ -34,35 +34,40 @@ export const iotaTestnet = {
 export const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '3a2e2d5e88adc8d9faad6fc06e36e1a9';
 
 // Define networks
-const networks = [iotaTestnet]
+const networks = [iotaTestnet];
 
-// Create wagmi config with autoConnect EXPLICITLY set to false
+// Check if we're in development mode
+const isDevelopment = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1';
+
+// Create wagmi config with autoConnect disabled in development
 export const wagmiConfig = createConfig({
   chains: networks,
   transports: {
     [iotaTestnet.id]: http('https://json-rpc.evm.testnet.iotaledger.net'),
   },
   connectors: [
-    // For injected connector (MetaMask), explicitly disable shimDisconnect
     injected({
-      shimDisconnect: true, // This forces the connector to forget the connection
+      shimDisconnect: true,
     }),
     walletConnect({
       projectId,
     }),
   ],
-  autoConnect: false // Explicitly disable auto-connect
+  // Disable auto-connect in development, but allow it in production
+  autoConnect: !isDevelopment
 })
 
-// Setup wagmi adapter with autoConnect explicitly disabled
+// Setup wagmi adapter
 export const wagmiAdapter = new WagmiAdapter({
   networks,
   projectId,
   wagmiConfig,
-  autoConnect: false // Explicitly disable auto-connect in the adapter too
+  // Disable auto-connect in development
+  autoConnect: !isDevelopment
 })
 
-// Create AppKit modal instance with autoConnect disabled
+// Create AppKit modal instance
 const modal = createAppKit({
   adapters: [wagmiAdapter],
   networks,
@@ -79,9 +84,7 @@ const modal = createAppKit({
   },
   features: {
     analytics: true
-  },
-  // If the AppKit supports this option:
-  autoConnect: false
+  }
 })
 
 // Export modal instance and all necessary hooks
