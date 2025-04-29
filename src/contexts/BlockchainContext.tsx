@@ -2,8 +2,15 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
-import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
-import { useContractWrite, useContractRead } from 'wagmi';
+import { 
+  useUpdateAllocations, 
+  usePortfolioAllocations,
+  useTransactionReceipt,
+  useIsContractOwner,
+  getExplorerUrl,
+  PORTFOLIO_CONTRACT_ADDRESS,
+  Allocation
+} from '../lib/contractService';
 
 // Define the default allocations
 const defaultAllocations = [
@@ -15,13 +22,6 @@ const defaultAllocations = [
   { id: 'l1', name: 'Layer 1', color: '#EF4444', allocation: 15 },
   { id: 'stablecoin', name: 'Stablecoins', color: '#14B8A6', allocation: 5 },
 ];
-
-export interface Allocation {
-  id: string;
-  name: string;
-  color: string;
-  allocation: number;
-}
 
 interface Transaction {
   id: string;
@@ -40,63 +40,119 @@ interface BlockchainContextType {
   applyAllocations: () => Promise<boolean>;
   isLoadingAllocations: boolean;
   isUpdatingAllocations: boolean;
+  isConfirmingTransaction: boolean;
   
   // Transactions
   transactions: Transaction[];
   addTransaction: (tx: Transaction) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
+  
+  // Contract info
+  contractAddress: string;
+  isContractOwner: boolean;
+  ownerAddress: string | null;
 }
 
 const BlockchainContext = createContext<BlockchainContextType | undefined>(undefined);
 
 export function BlockchainProvider({ children }: { children: ReactNode }) {
   const { isConnected, address } = useAccount();
-  const contractAddress = import.meta.env.VITE_PORTFOLIO_CONTRACT as `0x${string}`;
+  
+  // Check if the connected wallet is the contract owner
+  const { isOwner, ownerAddress, isLoading: isOwnerLoading } = useIsContractOwner();
+  
+  // Use the portfolio allocations hook from contractService
+  const { 
+    allocations: contractAllocations, 
+    isLoading: isAllocationsLoading,
+    refetch: refetchAllocations
+  } = usePortfolioAllocations();
 
-  // wagmi contract write hook
-  const {
-    write: updateAllocationsWrite,
-    data: updateAllocationsData,
-    isLoading: isContractWriteLoading,
-    isSuccess: isContractWriteSuccess,
-    error: contractWriteError
-  } = useContractWrite({
-    address: contractAddress,
-    abi: AutomatedPortfolioABI,
-    functionName: 'updateAllocations',
-  });
-
-  // Fetch allocations from contract
-  const { data: contractAllocations, isLoading: isAllocationsLoading } = useContractRead({
-    address: contractAddress,
-    abi: AutomatedPortfolioABI,
-    functionName: 'getAllocations',
-    watch: true,
-  });
-
-  useEffect(() => {
-    if (contractAllocations && Array.isArray(contractAllocations[0]) && Array.isArray(contractAllocations[1])) {
-      const categories: string[] = contractAllocations[0];
-      const percentages: number[] = contractAllocations[1];
-      const newAllocations = categories.map((name, i) => {
-        // Try to match color/id from defaultAllocations, fallback if not found
-        const match = defaultAllocations.find(a => a.name === name);
-        return {
-          id: match?.id || name.toLowerCase().replace(/\s+/g, '-'),
-          name,
-          color: match?.color || '#888',
-          allocation: Number(percentages[i])
-        };
-      });
-      setAllocations(newAllocations);
-    }
-  }, [contractAllocations]);
-
-  // For MVP, we'll use local state instead of actual contract calls
+  // State for allocations
   const [allocations, setAllocations] = useState<Allocation[]>(defaultAllocations);
   const [pendingAllocations, setPendingAllocations] = useState<Allocation[] | null>(null);
-  const [isLoadingAllocations, setIsLoadingAllocations] = useState(false);
   const [isUpdatingAllocations, setIsUpdatingAllocations] = useState(false);
+  const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | undefined>(undefined);
+  
+  // Load allocations from localStorage on mount
+  useEffect(() => {
+    const savedAllocations = localStorage.getItem('atoiota_allocations');
+    if (savedAllocations) {
+      try {
+        const parsedAllocations = JSON.parse(savedAllocations);
+        setAllocations(parsedAllocations);
+      } catch (error) {
+        console.error('Error loading allocations from localStorage:', error);
+      }
+    }
+  }, []);
+  
+  // Log wallet and contract information for debugging
+  useEffect(() => {
+    console.log('Wallet and contract status:', {
+      isConnected,
+      address,
+      isContractOwner: isOwner,
+      ownerAddress,
+      contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
+      chainId: (window as any).ethereum?.chainId, // If using MetaMask
+    });
+  }, [isConnected, address, isOwner, ownerAddress]);
+  
+  // Use the hook to monitor transaction confirmation
+  const { 
+    isLoading: isConfirming, 
+    isSuccess: isConfirmed,
+    data: receipt
+  } = useTransactionReceipt({
+    hash: pendingTxHash,
+  });
+  
+  // Update allocations when contract data changes
+  useEffect(() => {
+    if (contractAllocations && contractAllocations.length > 0) {
+      // Only update if the data is different to prevent infinite loops
+      const currentIds = allocations.map(a => a.id).sort().join(',');
+      const newIds = contractAllocations.map(a => a.id).sort().join(',');
+      
+      if (currentIds !== newIds || 
+          JSON.stringify(allocations) !== JSON.stringify(contractAllocations)) {
+        console.log('Updating allocations from contract:', contractAllocations);
+        setAllocations(contractAllocations);
+      }
+    }
+  }, [contractAllocations]); // Only depend on contractAllocations, not allocations
+  
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && pendingTxHash && receipt) {
+      console.log('Transaction confirmed:', receipt);
+      
+      // Transaction confirmed
+      const status = receipt.status === 'success' ? 'confirmed' : 'failed';
+      
+      updateTransaction(pendingTxHash, { status });
+      
+      // Clear the pending hash
+      setPendingTxHash(undefined);
+      
+      // Refetch allocations from the contract
+      refetchAllocations();
+      
+      // Show success message
+      if (status === 'confirmed') {
+        toast.success(
+          "Transaction Confirmed", 
+          "Your allocation changes have been confirmed on the blockchain."
+        );
+      } else {
+        toast.error(
+          "Transaction Failed", 
+          "Your allocation changes failed to process on the blockchain."
+        );
+      }
+    }
+  }, [isConfirmed, pendingTxHash, receipt, refetchAllocations]);
   
   // Transaction state
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -133,6 +189,14 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     );
   };
   
+  // Use the allocations-aware hook
+  const { 
+    updateAllocations, 
+    isPending: isContractWriteLoading,
+    error: contractWriteError,
+    isOwner: isUpdatePermitted
+  } = useUpdateAllocations();
+
   // Apply pending allocations to the blockchain
   const applyAllocations = async (): Promise<boolean> => {
     if (!isConnected) {
@@ -140,8 +204,23 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
+    if (!isOwner) {
+      toast.error(
+        "Not Contract Owner", 
+        `Only the contract owner can update allocations.`
+      );
+      return false;
+    }
+    
     if (!pendingAllocations) {
       toast.error("No Changes", "There are no pending allocation changes to apply.");
+      return false;
+    }
+    
+    // Validate total allocation is 100%
+    const total = pendingAllocations.reduce((sum, item) => sum + item.allocation, 0);
+    if (total !== 100) {
+      toast.error("Invalid Allocation", `Total allocation must be 100%. Current total: ${total}%`);
       return false;
     }
     
@@ -164,25 +243,50 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       // Add the pending transaction
       addTransaction(pendingTx);
       
-      // Prepare arguments for contract call
-      const categories = pendingAllocations.map(a => a.name);
-      const percentages = pendingAllocations.map(a => a.allocation);
-      
       // Call the contract
-      const tx = await updateAllocationsWrite({ args: [categories, percentages] });
-      if (!tx?.hash) throw new Error('No transaction hash returned');
+      console.log('Submitting allocation update to contract:', pendingAllocations);
       
-      // NOTE: To track transaction status, use the useWaitForTransaction hook at the component level, not inside this async function.
-      // You can update the transaction status in a useEffect that watches for the transaction hash.
+      // Call the updateAllocations function from contractService
+      const tx = await updateAllocations(pendingAllocations);
+      
+      if (!tx?.hash) {
+        throw new Error('No transaction hash returned');
+      }
+      
+      console.log('Transaction submitted:', tx.hash);
+      
+      // Update transaction with hash
       updateTransaction(txId, { hash: tx.hash, id: tx.hash });
-      setAllocations(pendingAllocations);
+      
+      // Set the pending hash for monitoring
+      setPendingTxHash(tx.hash);
+      
+      // Update local state
+      setAllocations([...pendingAllocations]);
       setPendingAllocations(null);
-      updateTransaction(tx.hash, { status: 'confirmed' });
-      toast.success("Allocations Updated", "Your portfolio allocations have been successfully updated on the blockchain.");
+      
+      // Store the updated allocations in localStorage for persistence
+      localStorage.setItem('atoiota_allocations', JSON.stringify(pendingAllocations));
+      
+      // Show pending message with link to explorer
+      toast.success(
+        "Transaction Submitted", 
+        <div>
+          Transaction has been submitted to the blockchain.{' '}
+          <a 
+            href={getExplorerUrl(tx.hash)} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
+      
       return true;
     } catch (error: any) {
       console.error('Error updating allocations:', error);
-      
       // Update the pending transaction to failed
       const errorTxId = `pending_${Date.now().toString(16)}`;
       updateTransaction(errorTxId, { 
@@ -192,9 +296,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
           error: error.message || 'Transaction failed'
         }
       });
-      
       toast.error("Update Failed", error.message || "Failed to update allocations. Please try again.");
-      
       return false;
     } finally {
       setIsUpdatingAllocations(false);
@@ -209,9 +311,13 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       applyAllocations,
       isLoadingAllocations: isAllocationsLoading,
       isUpdatingAllocations,
+      isConfirmingTransaction: isConfirming,
       transactions,
       addTransaction,
-      updateTransaction
+      updateTransaction,
+      contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
+      isContractOwner: isOwner,
+      ownerAddress: ownerAddress || null
     }}>
       {children}
     </BlockchainContext.Provider>

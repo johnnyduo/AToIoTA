@@ -1,4 +1,6 @@
+// src/lib/tokenService.ts
 import { toast } from '@/components/ui/use-toast';
+import { generateTokenInsights, isGeminiAvailable } from './geminiService';
 
 // Types for token data
 export interface TokenPrice {
@@ -15,7 +17,7 @@ export interface TokenPrice {
  * Fetch token prices from CoinGecko API
  * This is a free public API that doesn't require authentication
  */
-export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
+export const fetchTokenPrices = async (specificTokens?: string[]): Promise<TokenPrice[]> => {
   try {
     const apiUrl = import.meta.env.VITE_COINGECKO_API_URL || 'https://api.coingecko.com/api/v3';
     const response = await fetch(
@@ -27,14 +29,29 @@ export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
     }
     
     const data = await response.json();
+    
+    // If specific tokens are requested, filter the results
+    if (specificTokens && specificTokens.length > 0) {
+      const filteredData = data.filter((token: TokenPrice) => 
+        specificTokens.some(symbol => 
+          token.symbol.toLowerCase() === symbol.toLowerCase()
+        )
+      );
+      return filteredData;
+    }
+    
     return data;
   } catch (error) {
     console.error('Error fetching token prices:', error);
-    toast({
-      title: 'Error fetching token prices',
-      description: 'Could not retrieve the latest token data. Using cached data instead.',
-      variant: 'destructive',
-    });
+    
+    // Only show toast if not fetching specific tokens (to avoid UI noise)
+    // if (!specificTokens) {
+    //   toast({
+    //     title: 'Error fetching token prices',
+    //     description: 'Could not retrieve the latest token data. Using cached data instead.',
+    //     variant: 'destructive',
+    //   });
+    // }
     
     // Return empty array if fetch fails
     return [];
@@ -47,44 +64,52 @@ export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
  */
 export const fetchTokenInsights = async (tokenSymbol: string): Promise<string> => {
   try {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // Check if we have cached insights for this token
+    const cachedInsights = localStorage.getItem(`token_insights_${tokenSymbol.toLowerCase()}`);
+    const cacheTime = localStorage.getItem(`token_insights_${tokenSymbol.toLowerCase()}_time`);
     
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    // If we have cached insights that are less than 1 hour old, use them
+    if (cachedInsights && cacheTime) {
+      const cacheAge = Date.now() - parseInt(cacheTime);
+      if (cacheAge < 60 * 60 * 1000) { // 1 hour
+        return cachedInsights;
+      }
+    }
+    
+    // Check if Gemini API is available
+    if (!isGeminiAvailable()) {
       throw new Error('Gemini API key not configured');
     }
     
-    // Gemini API endpoint
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
-    
-    const response = await fetch(`${endpoint}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Provide a brief market analysis and price prediction for the cryptocurrency ${tokenSymbol}. Include recent news, trading volume, and market sentiment. Keep it concise and focused on actionable insights.`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 500,
-        }
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Gemini API request failed with status ${response.status}`);
+    // Get current price data for context
+    let priceContext = '';
+    try {
+      const tokenPrices = await fetchTokenPrices([tokenSymbol]);
+      if (tokenPrices.length > 0) {
+        const token = tokenPrices[0];
+        priceContext = `Current price: $${token.current_price}, 24h change: ${token.price_change_percentage_24h.toFixed(2)}%, Market cap: $${token.market_cap}`;
+      }
+    } catch (error) {
+      console.error('Error fetching price data for insights:', error);
+      // Continue without price context
     }
     
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    // Generate insights using our geminiService
+    const insights = await generateTokenInsights(tokenSymbol, priceContext);
+    
+    // Cache the insights
+    localStorage.setItem(`token_insights_${tokenSymbol.toLowerCase()}`, insights);
+    localStorage.setItem(`token_insights_${tokenSymbol.toLowerCase()}_time`, Date.now().toString());
+    
+    return insights;
   } catch (error) {
     console.error('Error fetching token insights:', error);
     return 'Unable to retrieve token insights at this time. Please try again later.';
   }
 };
+
+// Re-export isGeminiAvailable from geminiService
+export { isGeminiAvailable } from './geminiService';
 
 /**
  * Cache token data in localStorage

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, BarChart2, ArrowRight, TrendingUp, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -8,6 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import AdjustmentModal from './AdjustmentModal';
 import { fetchTokenInsights } from '@/lib/tokenService';
+import { generateChatResponse, isGeminiAvailable } from '@/lib/geminiService';
+import { useAccount } from 'wagmi';
+import { useBlockchain } from '@/contexts/BlockchainContext';
 
 interface ChatMessage {
   id: string;
@@ -96,8 +98,11 @@ const AIChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const [currentAction, setCurrentAction] = useState<any>(null);
+  const [isGeminiEnabled, setIsGeminiEnabled] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { isConnected, address } = useAccount();
+  const { allocations, pendingAllocations } = useBlockchain();
   
   // Load chat messages from localStorage on component mount
   useEffect(() => {
@@ -159,6 +164,11 @@ const AIChat = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Check if Gemini API is available
+  useEffect(() => {
+    setIsGeminiEnabled(isGeminiAvailable());
+  }, []);
   
   const triggerAIInsight = (insight: any) => {
     setIsTyping(true);
@@ -202,14 +212,14 @@ const AIChat = () => {
     const tokenPriceMatch = message.toLowerCase().match(/price\s+of\s+([a-z0-9]+)|([a-z0-9]+)\s+price|about\s+([a-z0-9]+)/i);
     const tokenSymbol = tokenPriceMatch ? (tokenPriceMatch[1] || tokenPriceMatch[2] || tokenPriceMatch[3]).toUpperCase() : null;
     
-    // If asking about a specific token and we have a Gemini API key, fetch insights
-    if (tokenSymbol && import.meta.env.VITE_GEMINI_API_KEY) {
+    // If asking about a specific token and Gemini is enabled
+    if (tokenSymbol && isGeminiEnabled) {
       try {
-        // Show typing indicator
-        setIsTyping(true);
-        
-        // Fetch token insights from Gemini API
+        // Fetch token insights
         const insights = await fetchTokenInsights(tokenSymbol);
+        
+        // Check if the response is an error message
+        const isErrorResponse = insights.startsWith('Unable to retrieve token insights');
         
         const aiResponse: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -220,6 +230,15 @@ const AIChat = () => {
         
         setMessages(prev => [...prev, aiResponse]);
         setIsTyping(false);
+        
+        // If we got an error response, also show a toast
+        if (isErrorResponse) {
+          toast({
+            title: "Gemini API Issue",
+            description: "There was a problem with the Gemini API. Using fallback responses.",
+          });
+        }
+        
         return;
       } catch (error) {
         console.error('Error fetching token insights:', error);
@@ -227,7 +246,45 @@ const AIChat = () => {
       }
     }
     
-    // Simulate AI response after delay (fallback to pattern matching)
+    // Try using Gemini for general chat responses
+    if (isGeminiEnabled) {
+      try {
+        // Get last 5 messages for context
+        const recentMessages = messages.slice(-5).map(msg => ({
+          sender: msg.sender,
+          content: msg.content
+        }));
+        
+        // Generate response using Gemini
+        const { content, action } = await generateChatResponse(message, recentMessages);
+        
+        const aiResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          content: content,
+          timestamp: new Date(),
+          action: action
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+        setIsTyping(false);
+        return;
+      } catch (error) {
+        console.error('Error generating chat response with Gemini:', error);
+        
+        // Show a toast notification about the API issue
+        toast({
+          title: "Gemini API Issue",
+          description: error instanceof Error 
+            ? error.message 
+            : "There was a problem with the Gemini API. Using fallback responses.",
+          variant: "destructive"
+        });
+        // Fall back to pattern matching
+      }
+    }
+    
+    // Fallback to pattern matching (existing code)
     setTimeout(() => {
       let aiResponse: ChatMessage;
       
@@ -308,23 +365,54 @@ const AIChat = () => {
     }, 1500);
   };
   
-  const handleActionClick = (action: any) => {
+  const handleActionClick = async (action: any) => {
+    if (!isConnected) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to apply portfolio changes.",
+      });
+      return;
+    }
+    
     if (action.changes) {
-      setCurrentAction(action);
+      // If the action has changes, we need to prepare them for the modal
+      // First, get the current allocations from the blockchain context
+      const currentAllocations = pendingAllocations || allocations;
+      
+      // For each change in the action, update the 'from' value to match current allocation
+      const updatedChanges = action.changes.map((change: any) => {
+        const currentAllocation = currentAllocations.find((a: any) => a.id === change.category);
+        return {
+          ...change,
+          from: currentAllocation ? currentAllocation.allocation : change.from
+        };
+      });
+      
+      // Create an updated action with the correct 'from' values
+      const updatedAction = {
+        ...action,
+        changes: updatedChanges
+      };
+      
+      // Set the current action and open the modal
+      setCurrentAction(updatedAction);
       setAdjustmentOpen(true);
+    } else if (action.type === 'analysis') {
+      toast({
+        title: "Analysis in Progress",
+        description: "Generating detailed market analysis...",
+      });
+      
+      // If it's a market analysis action, send another insight after a delay
+      setTimeout(() => {
+        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
+        triggerAIInsight(randomInsight);
+      }, 4000);
     } else {
       toast({
         title: "Action Triggered",
         description: action.description,
       });
-    }
-    
-    // If it's a market analysis action, send another insight after a delay
-    if (action.type === 'analysis') {
-      setTimeout(() => {
-        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
-        triggerAIInsight(randomInsight);
-      }, 4000);
     }
   };
   

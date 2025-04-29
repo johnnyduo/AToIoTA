@@ -9,110 +9,59 @@ import { useAccount } from 'wagmi';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface AllocationCategory {
-  id: string;
-  name: string;
-  color: string;
-  currentAllocation: number;
-  newAllocation: number;
-}
-
 const AllocationAdjuster = () => {
   const { toast } = useToast();
-  const { isConnected } = useAccount(); // Using wagmi's useAccount hook
-  const { 
-    allocations, 
-    pendingAllocations, 
-    setPendingAllocations, 
+  const { isConnected } = useAccount();
+  const {
+    allocations,
+    pendingAllocations,
+    setPendingAllocations,
     applyAllocations,
     isLoadingAllocations,
     isUpdatingAllocations
   } = useBlockchain();
-  
-  const [categories, setCategories] = useState<AllocationCategory[]>([]);
+
+  const [localAllocations, setLocalAllocations] = useState<any[]>([]);
   const [isBalanced, setIsBalanced] = useState(true);
-  
-  // Initialize categories from blockchain data
+
+  // Initialize local state from blockchain context
   useEffect(() => {
-    if (allocations.length > 0) {
-      if (pendingAllocations) {
-        // If there are pending changes, use those for new allocations
-        setCategories(allocations.map(item => {
-          const pendingItem = pendingAllocations.find(p => p.id === item.id);
-          return {
-            id: item.id,
-            name: item.name,
-            color: item.color,
-            currentAllocation: item.allocation,
-            newAllocation: pendingItem ? pendingItem.allocation : item.allocation
-          };
-        }));
-      } else {
-        // Otherwise use current allocations for both
-        setCategories(allocations.map(item => ({
-          id: item.id,
-          name: item.name,
-          color: item.color,
-          currentAllocation: item.allocation,
-          newAllocation: item.allocation
-        })));
-      }
+    if (pendingAllocations) {
+      setLocalAllocations(pendingAllocations);
+    } else {
+      setLocalAllocations(allocations);
     }
   }, [allocations, pendingAllocations]);
-  
+
   const handleSliderChange = (index: number, value: number[]) => {
-    const newCategories = [...categories];
-    newCategories[index].newAllocation = value[0];
-    
-    // Check total allocation
-    const total = newCategories.reduce((sum, cat) => sum + cat.newAllocation, 0);
+    const newAllocations = [...localAllocations];
+    newAllocations[index] = { ...newAllocations[index], allocation: value[0] };
+    setLocalAllocations(newAllocations);
+    const total = newAllocations.reduce((sum, item) => sum + item.allocation, 0);
     setIsBalanced(total === 100);
-    
-    setCategories(newCategories);
-    
-    // Update pending changes
-    const updatedPendingAllocations = newCategories.map(cat => ({
-      id: cat.id,
-      name: cat.name,
-      color: cat.color,
-      allocation: cat.newAllocation
-    }));
-    
-    setPendingAllocations(updatedPendingAllocations);
+    setPendingAllocations(newAllocations);
   };
-  
+
   const autoBalance = () => {
-    const newCategories = [...categories];
-    const total = newCategories.reduce((sum, cat) => sum + cat.newAllocation, 0);
-    
+    const total = localAllocations.reduce((sum, item) => sum + item.allocation, 0);
+    let newAllocations = [...localAllocations];
     if (total !== 100) {
-      // Adjust each category proportionally
       const scaleFactor = 100 / total;
-      newCategories.forEach((category, index) => {
-        newCategories[index].newAllocation = Math.round(category.newAllocation * scaleFactor);
-      });
-      
-      // Handle rounding errors by adjusting the first category
-      const adjustedTotal = newCategories.reduce((sum, cat) => sum + cat.newAllocation, 0);
+      newAllocations = newAllocations.map(item => ({
+        ...item,
+        allocation: Math.round(item.allocation * scaleFactor)
+      }));
+      // Fix rounding errors
+      const adjustedTotal = newAllocations.reduce((sum, item) => sum + item.allocation, 0);
       if (adjustedTotal !== 100) {
-        newCategories[0].newAllocation += (100 - adjustedTotal);
+        newAllocations[0].allocation += (100 - adjustedTotal);
       }
     }
-    
-    setCategories(newCategories);
+    setLocalAllocations(newAllocations);
     setIsBalanced(true);
-    
-    // Update pending changes
-    const updatedPendingAllocations = newCategories.map(cat => ({
-      id: cat.id,
-      name: cat.name,
-      color: cat.color,
-      allocation: cat.newAllocation
-    }));
-    
-    setPendingAllocations(updatedPendingAllocations);
+    setPendingAllocations(newAllocations);
   };
-  
+
   const handleApplyChanges = async () => {
     if (!isConnected) {
       toast({
@@ -122,7 +71,6 @@ const AllocationAdjuster = () => {
       });
       return;
     }
-    
     if (!isBalanced) {
       toast({
         title: "Error",
@@ -131,12 +79,26 @@ const AllocationAdjuster = () => {
       });
       return;
     }
-    
-    await applyAllocations();
+    try {
+      setPendingAllocations(localAllocations);
+      const success = await applyAllocations();
+      if (success) {
+        toast({
+          title: "Allocations Updated",
+          description: "Your portfolio has been rebalanced successfully!"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update allocations. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-  
-  const totalAllocation = categories.reduce((sum, cat) => sum + cat.newAllocation, 0);
-  
+
+  const totalAllocation = localAllocations.reduce((sum, item) => sum + item.allocation, 0);
+
   if (isLoadingAllocations) {
     return (
       <Card className="card-glass">
@@ -150,7 +112,7 @@ const AllocationAdjuster = () => {
       </Card>
     );
   }
-  
+
   return (
     <Card className="card-glass">
       <CardHeader>
@@ -165,35 +127,33 @@ const AllocationAdjuster = () => {
             </AlertDescription>
           </Alert>
         )}
-        
-        {categories.map((category, index) => (
-          <div key={category.id} className="space-y-2">
+        {localAllocations.map((item, index) => (
+          <div key={item.id} className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color }}></div>
-                <span className="font-medium">{category.name}</span>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }}></div>
+                <span className="font-medium">{item.name}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-muted-foreground font-roboto-mono text-sm">Current: {category.currentAllocation}%</span>
-                <span className="font-roboto-mono font-medium">{category.newAllocation}%</span>
+                <span className="text-muted-foreground font-roboto-mono text-sm">Current: {allocations.find(a => a.id === item.id)?.allocation}%</span>
+                <span className="font-roboto-mono font-medium">{item.allocation}%</span>
               </div>
             </div>
-            <Slider 
-              defaultValue={[category.currentAllocation]} 
-              max={100} 
+            <Slider
+              defaultValue={[allocations.find(a => a.id === item.id)?.allocation || 0]}
+              max={100}
               step={1}
-              value={[category.newAllocation]}
+              value={[item.allocation]}
               onValueChange={(value) => handleSliderChange(index, value)}
               className="cursor-pointer"
               disabled={isUpdatingAllocations || !isConnected}
             />
           </div>
         ))}
-        
         <div className={`rounded-lg p-4 ${totalAllocation === 100 ? 'bg-nebula-900/50' : 'bg-destructive/20'}`}>
           <div className="flex items-center justify-between">
             <span className="font-medium">Total Allocation:</span>
-            <span 
+            <span
               className={`font-roboto-mono font-bold ${
                 totalAllocation === 100 ? 'text-nebula-400' : 'text-destructive'
               }`}
@@ -209,15 +169,15 @@ const AllocationAdjuster = () => {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={autoBalance}
           disabled={isUpdatingAllocations || !isConnected}
         >
           Auto Balance
         </Button>
-        <Button 
-          className="bg-gradient-button hover:opacity-90" 
+        <Button
+          className="bg-gradient-button hover:opacity-90"
           onClick={handleApplyChanges}
           disabled={!isBalanced || isUpdatingAllocations || !isConnected}
         >

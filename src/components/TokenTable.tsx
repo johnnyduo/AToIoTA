@@ -26,7 +26,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
-import { fetchTokenPrices, cacheTokenData, getCachedTokenData, TokenPrice } from '@/lib/tokenService';
+import { fetchTokenPrices, cacheTokenData, getCachedTokenData, TokenPrice, fetchTokenInsights } from '@/lib/tokenService';
+import { isGeminiAvailable } from '@/lib/geminiService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 
 interface Token {
@@ -95,6 +97,10 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<number | null>(REFRESH_INTERVALS.AUTO);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+  const [tokenInsight, setTokenInsight] = useState<string | null>(null);
+  const [isInsightLoading, setIsInsightLoading] = useState(false);
+  const [isGeminiEnabled, setIsGeminiEnabled] = useState(false);
   const { toast } = useToast();
   
   // Auto-refresh effect
@@ -147,6 +153,39 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
     loadTokenData();
   }, []);
   
+  // Check if Gemini API is available
+  useEffect(() => {
+    setIsGeminiEnabled(typeof isGeminiAvailable === 'function' ? isGeminiAvailable() : false);
+  }, []);
+
+  // Function to fetch token insights
+  const getTokenInsights = async (token: Token) => {
+    if (!isGeminiEnabled) {
+      toast({
+        title: "AI Insights Unavailable",
+        description: "Gemini API key is not configured. Please add it to your environment variables.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSelectedToken(token);
+    setTokenInsight(null);
+    setIsInsightLoading(true);
+    try {
+      const insights = await fetchTokenInsights(token.symbol);
+      setTokenInsight(insights);
+    } catch (error) {
+      console.error('Error fetching token insights:', error);
+      toast({
+        title: "Failed to Load Insights",
+        description: error instanceof Error ? error.message : "Could not fetch AI insights for this token. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInsightLoading(false);
+    }
+  };
+
   // Function to refresh token data manually
   const refreshTokenData = async (showToast = true) => {
     setIsLoading(true);
@@ -286,196 +325,240 @@ const TokenTable = ({ category = "all" }: { category?: string }) => {
     setCurrentPage(p => Math.min(totalPages, p + 1));
   };
   
-  // Format the last updated time
-  const getLastUpdatedText = () => {
-    if (!lastUpdated) return 'Never updated';
+    // Format the last updated time
+    const getLastUpdatedText = () => {
+      if (!lastUpdated) return 'Never updated';
+      
+      // If updated less than a minute ago, show "Just now"
+      const secondsAgo = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
+      if (secondsAgo < 60) return 'Just now';
+      
+      // If updated less than an hour ago, show minutes
+      const minutesAgo = Math.floor(secondsAgo / 60);
+      if (minutesAgo < 60) return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
+      
+      // Otherwise show the time
+      return lastUpdated.toLocaleTimeString();
+    };
     
-    // If updated less than a minute ago, show "Just now"
-    const secondsAgo = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
-    if (secondsAgo < 60) return 'Just now';
-    
-    // If updated less than an hour ago, show minutes
-    const minutesAgo = Math.floor(secondsAgo / 60);
-    if (minutesAgo < 60) return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
-    
-    // Otherwise show the time
-    return lastUpdated.toLocaleTimeString();
+    return (
+      <>
+        <Card className="card-glass">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl">{getCategoryTitle()}</CardTitle>
+              {isGeminiEnabled && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Click on any token to view AI-powered insights
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span>{getLastUpdatedText()}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Last updated: {lastUpdated?.toLocaleString() || 'Never'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <span className="text-xs">Auto</span>
+                <Switch 
+                  checked={autoRefreshEnabled} 
+                  onCheckedChange={toggleAutoRefresh} 
+                  aria-label="Toggle auto-refresh"
+                />
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refreshTokenData(true)} 
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Updating...' : 'Refresh'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">Name</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="font-medium p-0" 
+                        onClick={() => handleSort('change24h')}
+                        aria-sort={sortField === 'change24h' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      >
+                        24h Change 
+                        <MoveVertical className="ml-1 h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">Market Cap</TableHead>
+                    <TableHead className="text-right">Volume (24h)</TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="font-medium p-0" 
+                        onClick={() => handleSort('allocation')}
+                        aria-sort={sortField === 'allocation' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      >
+                        Allocation
+                        <MoveVertical className="ml-1 h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+  
+                <TableBody>
+                  {paginatedTokens.map((token) => (
+                    <TableRow 
+                      key={token.id} 
+                      className="cursor-pointer hover:bg-white/5"
+                      onClick={() => getTokenInsights(token)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <div className="h-8 w-8 rounded-full bg-gradient-nebula flex items-center justify-center">
+                            <span className="font-medium text-xs">{token.symbol.substring(0, 2)}</span>
+                          </div>
+                          <div>
+                            <div className="font-medium">{token.name}</div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-muted-foreground font-roboto-mono">{token.symbol}</span>
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ 
+                                  backgroundColor: `${categoryColors[token.category]}20`,
+                                  color: categoryColors[token.category]
+                                }}
+                              >
+                                {token.category.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-roboto-mono">
+                        ${token.price < 0.01 ? token.price.toFixed(6) : token.price.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className={`inline-flex items-center ${token.change24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {token.change24h > 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+                          <span className="font-roboto-mono">{token.change24h > 0 ? '+' : ''}{token.change24h.toFixed(2)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-roboto-mono">
+                        {formatNumber(token.marketCap)}
+                      </TableCell>
+                      <TableCell className="text-right font-roboto-mono">
+                        {formatNumber(token.volume)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge className="bg-gradient-button">{token.allocation}%</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {paginatedTokens.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No tokens found for this category
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+  
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        {currentPage === 1 ? (
+                          <PaginationLink
+                            aria-disabled="true"
+                            className="opacity-50 pointer-events-none"
+                          >
+                            Previous
+                          </PaginationLink>
+                        ) : (
+                          <PaginationPrevious onClick={goToPreviousPage} />
+                        )}
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="px-4 py-2">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        {currentPage === totalPages ? (
+                          <PaginationLink
+                            aria-disabled="true"
+                            className="opacity-50 pointer-events-none"
+                          >
+                            Next
+                          </PaginationLink>
+                        ) : (
+                          <PaginationNext onClick={goToNextPage} />
+                        )}
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        {/* Token Insights Dialog */}
+        <Dialog open={!!selectedToken} onOpenChange={(open) => !open && setSelectedToken(null)}>
+          <DialogContent className="sm:max-w-[600px] bg-cosmic-900 border-cosmic-700">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                {selectedToken && (
+                  <>
+                    <div className="h-8 w-8 rounded-full bg-gradient-nebula flex items-center justify-center mr-2">
+                      <span className="font-medium text-xs">{selectedToken.symbol.substring(0, 2)}</span>
+                    </div>
+                    {selectedToken.name} ({selectedToken.symbol}) Insights
+                  </>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 px-2">
+              {isInsightLoading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mb-4 text-nebula-400" />
+                  <p className="text-muted-foreground">Generating AI insights...</p>
+                </div>
+              ) : tokenInsight ? (
+                <div className="prose prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap">{tokenInsight}</div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">No insights available</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   };
   
-  return (
-    <Card className="card-glass">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-2xl">{getCategoryTitle()}</CardTitle>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3 mr-1" />
-                    <span>{getLastUpdatedText()}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Last updated: {lastUpdated?.toLocaleString() || 'Never'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <span className="text-xs">Auto</span>
-            <Switch 
-              checked={autoRefreshEnabled} 
-              onCheckedChange={toggleAutoRefresh} 
-              aria-label="Toggle auto-refresh"
-            />
-          </div>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => refreshTokenData(true)} 
-            disabled={isLoading}
-          >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Updating...' : 'Refresh'}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[150px]">Name</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="font-medium p-0" 
-                    onClick={() => handleSort('change24h')}
-                    aria-sort={sortField === 'change24h' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                  >
-                    24h Change 
-                    <MoveVertical className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right">Market Cap</TableHead>
-                <TableHead className="text-right">Volume (24h)</TableHead>
-                <TableHead className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="font-medium p-0" 
-                    onClick={() => handleSort('allocation')}
-                    aria-sort={sortField === 'allocation' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                  >
-                    Allocation
-                    <MoveVertical className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {paginatedTokens.map((token) => (
-                <TableRow key={token.id}>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <div className="h-8 w-8 rounded-full bg-gradient-nebula flex items-center justify-center">
-                        <span className="font-medium text-xs">{token.symbol.substring(0, 2)}</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{token.name}</div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-muted-foreground font-roboto-mono">{token.symbol}</span>
-                          <span 
-                            className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{ 
-                              backgroundColor: `${categoryColors[token.category]}20`,
-                              color: categoryColors[token.category]
-                            }}
-                          >
-                            {token.category.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-roboto-mono">
-                    ${token.price < 0.01 ? token.price.toFixed(6) : token.price.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className={`inline-flex items-center ${token.change24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {token.change24h > 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
-                      <span className="font-roboto-mono">{token.change24h > 0 ? '+' : ''}{token.change24h.toFixed(2)}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-roboto-mono">
-                    {formatNumber(token.marketCap)}
-                  </TableCell>
-                  <TableCell className="text-right font-roboto-mono">
-                    {formatNumber(token.volume)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge className="bg-gradient-button">{token.allocation}%</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              
-              {paginatedTokens.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No tokens found for this category
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-
-          {totalPages > 1 && (
-            <div className="mt-4 flex justify-center">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    {currentPage === 1 ? (
-                      <PaginationLink
-                        aria-disabled="true"
-                        className="opacity-50 pointer-events-none"
-                      >
-                        Previous
-                      </PaginationLink>
-                    ) : (
-                      <PaginationPrevious onClick={goToPreviousPage} />
-                    )}
-                  </PaginationItem>
-                  <PaginationItem>
-                    <span className="px-4 py-2">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                  </PaginationItem>
-                  <PaginationItem>
-                    {currentPage === totalPages ? (
-                      <PaginationLink
-                        aria-disabled="true"
-                        className="opacity-50 pointer-events-none"
-                      >
-                        Next
-                      </PaginationLink>
-                    ) : (
-                      <PaginationNext onClick={goToNextPage} />
-                    )}
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-export default TokenTable;
+  export default TokenTable;
