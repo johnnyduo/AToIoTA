@@ -13,13 +13,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { usePreventAutoConnect } from '@/hooks/usePreventAutoConnect';
 
 export function WalletConnect() {
+  // Use the custom hook to prevent auto-connect
+  usePreventAutoConnect();
+  
   const { address, isConnected } = useAccount()
   const { error } = useAccount()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
   const { connectAsync } = useConnect()
+  const appKit = useAppKit()
 
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -27,7 +32,7 @@ export function WalletConnect() {
   // Switch to IOTA testnet if connected to wrong network
   useEffect(() => {
     if (isConnected && chainId !== iotaTestnet.id) {
-      connectAsync({ chainId: iotaTestnet.id })
+      connectAsync({ chainId: iotaTestnet.id }).catch(console.error)
     }
   }, [chainId, isConnected, connectAsync])
 
@@ -46,23 +51,40 @@ export function WalletConnect() {
   }, [chainId, isConnected])
 
   const handleDisconnect = async () => {
-    setIsDisconnecting(true)
+    if (isDisconnecting) return;
+    
+    setIsDisconnecting(true);
+    setIsDropdownOpen(false);
+    
     try {
-      await disconnect()
+      console.log("Disconnecting wallet...");
       
-      // Only remove wallet-specific items from localStorage
-      window.localStorage.removeItem('wagmi.connected')
-      window.localStorage.removeItem('wagmi.wallet')
-      window.localStorage.removeItem('wagmi.store')
+      // Set the flag to prevent auto-reconnect
+      localStorage.setItem('PREVENT_AUTO_CONNECT', 'true');
       
-      setIsDropdownOpen(false)
+      // Call the disconnect function
+      await disconnect();
+      
+      // Clear specific localStorage items
+      localStorage.removeItem('wagmi.connected');
+      localStorage.removeItem('wagmi.wallet');
+      localStorage.removeItem('wagmi.store');
+      
+      toast.success("Disconnected", "Your wallet has been disconnected successfully.");
+      
+      // Force a page reload to ensure clean state
+      window.location.reload();
     } catch (error) {
-      console.error('Disconnect error:', error)
-      toast.error('Disconnect Error', 'Failed to disconnect wallet. Please try again.');
+      console.error('Disconnect error:', error);
+      toast.error('Disconnect Error', 'Failed to disconnect wallet.');
+      
+      // Still set the flag and reload even if disconnect fails
+      localStorage.setItem('PREVENT_AUTO_CONNECT', 'true');
+      window.location.reload();
     } finally {
-      setIsDisconnecting(false)
+      setIsDisconnecting(false);
     }
-  }
+  };
 
   const formatAddress = (addr: string) => {
     if (!addr) return '';
@@ -131,14 +153,15 @@ export function WalletConnect() {
       </DropdownMenu>
     )
   }
-
-  // Get the AppKit modal controller
-  const appKit = useAppKit();
   
   return (
     <Button 
       className="bg-gradient-button hover:opacity-90 font-medium"
-      onClick={() => appKit.open()}
+      onClick={() => {
+        // Clear the prevent auto-connect flag when user explicitly connects
+        localStorage.removeItem('PREVENT_AUTO_CONNECT');
+        appKit.open();
+      }}
     >
       <Wallet className="mr-2 h-4 w-4" />
       Connect Wallet

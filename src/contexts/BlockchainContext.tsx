@@ -2,6 +2,8 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
+import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
+import { useContractWrite, useContractRead } from 'wagmi';
 
 // Define the default allocations
 const defaultAllocations = [
@@ -48,8 +50,48 @@ interface BlockchainContextType {
 const BlockchainContext = createContext<BlockchainContextType | undefined>(undefined);
 
 export function BlockchainProvider({ children }: { children: ReactNode }) {
-  const { isConnected } = useAccount();
-  
+  const { isConnected, address } = useAccount();
+  const contractAddress = import.meta.env.VITE_PORTFOLIO_CONTRACT as `0x${string}`;
+
+  // wagmi contract write hook
+  const {
+    write: updateAllocationsWrite,
+    data: updateAllocationsData,
+    isLoading: isContractWriteLoading,
+    isSuccess: isContractWriteSuccess,
+    error: contractWriteError
+  } = useContractWrite({
+    address: contractAddress,
+    abi: AutomatedPortfolioABI,
+    functionName: 'updateAllocations',
+  });
+
+  // Fetch allocations from contract
+  const { data: contractAllocations, isLoading: isAllocationsLoading } = useContractRead({
+    address: contractAddress,
+    abi: AutomatedPortfolioABI,
+    functionName: 'getAllocations',
+    watch: true,
+  });
+
+  useEffect(() => {
+    if (contractAllocations && Array.isArray(contractAllocations[0]) && Array.isArray(contractAllocations[1])) {
+      const categories: string[] = contractAllocations[0];
+      const percentages: number[] = contractAllocations[1];
+      const newAllocations = categories.map((name, i) => {
+        // Try to match color/id from defaultAllocations, fallback if not found
+        const match = defaultAllocations.find(a => a.name === name);
+        return {
+          id: match?.id || name.toLowerCase().replace(/\s+/g, '-'),
+          name,
+          color: match?.color || '#888',
+          allocation: Number(percentages[i])
+        };
+      });
+      setAllocations(newAllocations);
+    }
+  }, [contractAllocations]);
+
   // For MVP, we'll use local state instead of actual contract calls
   const [allocations, setAllocations] = useState<Allocation[]>(defaultAllocations);
   const [pendingAllocations, setPendingAllocations] = useState<Allocation[] | null>(null);
@@ -122,29 +164,21 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       // Add the pending transaction
       addTransaction(pendingTx);
       
-      // For MVP, simulate blockchain delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Prepare arguments for contract call
+      const categories = pendingAllocations.map(a => a.name);
+      const percentages = pendingAllocations.map(a => a.allocation);
       
-      // Simulate transaction hash
-      const hash = `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}` as `0x${string}`;
+      // Call the contract
+      const tx = await updateAllocationsWrite({ args: [categories, percentages] });
+      if (!tx?.hash) throw new Error('No transaction hash returned');
       
-      // Update transaction with hash
-      updateTransaction(txId, { 
-        hash,
-        id: hash // Replace the temporary ID with the transaction hash
-      });
-      
-      // Update allocations
+      // NOTE: To track transaction status, use the useWaitForTransaction hook at the component level, not inside this async function.
+      // You can update the transaction status in a useEffect that watches for the transaction hash.
+      updateTransaction(txId, { hash: tx.hash, id: tx.hash });
       setAllocations(pendingAllocations);
-      
-      // Clear pending allocations
       setPendingAllocations(null);
-      
-      // Update transaction status
-      updateTransaction(hash, { status: 'confirmed' });
-      
+      updateTransaction(tx.hash, { status: 'confirmed' });
       toast.success("Allocations Updated", "Your portfolio allocations have been successfully updated on the blockchain.");
-      
       return true;
     } catch (error: any) {
       console.error('Error updating allocations:', error);
@@ -173,7 +207,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       pendingAllocations,
       setPendingAllocations,
       applyAllocations,
-      isLoadingAllocations,
+      isLoadingAllocations: isAllocationsLoading,
       isUpdatingAllocations,
       transactions,
       addTransaction,
