@@ -1,73 +1,71 @@
-# Welcome to your Lovable project
+# AToIoTA - AI-powered DeFi Investment Portfolio Navigator
 
-## Project info
+## Overview
 
-**URL**: https://lovable.dev/projects/8bde4b70-147d-4268-9dd9-ec67115a465f
+AToIoTA is an AI-powered DeFi investment portfolio navigator specifically designed for the IOTA EVM network. It helps users optimize their cryptocurrency investments through intelligent portfolio management, yield comparisons, and performance tracking.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Portfolio Overview**: Track your entire IOTA EVM investment portfolio in one place
+- **Performance Charts**: Visualize your investment performance over time
+- **Yield Comparison**: Compare yields across different DeFi protocols
+- **Token Management**: View and manage all your tokens in a comprehensive table
+- **AI-Powered Insights**: Get intelligent investment recommendations
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8bde4b70-147d-4268-9dd9-ec67115a465f) and start prompting.
+- **Frontend**: React with TypeScript
+- **UI Framework**: Tailwind CSS with Shadcn UI components
+- **State Management**: React Query
+- **Visualization**: Custom charts for portfolio performance
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Follow these steps to set up the project locally:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone <YOUR_REPOSITORY_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd atoiota
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Development
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This project uses Vite as its build tool. Here are some useful commands:
 
-**Use GitHub Codespaces**
+```sh
+# Start development server
+npm run dev
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Build for production
+npm run build
 
-## What technologies are used for this project?
+# Preview production build
+npm run preview
 
-This project is built with:
+# Lint code
+npm run lint
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Deployment
 
-## How can I deploy this project?
+To deploy this application:
 
-Simply open [Lovable](https://lovable.dev/projects/8bde4b70-147d-4268-9dd9-ec67115a465f) and click on Share -> Publish.
+1. Build the project: `npm run build`
+2. Deploy the contents of the `dist` directory to your hosting provider
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
+[Include your license information here]
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Contact
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[Include your contact information here]
