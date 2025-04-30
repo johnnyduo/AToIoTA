@@ -2,13 +2,15 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, Loader2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Loader2, Droplets, WalletIcon } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const PortfolioOverview = () => {
   const { allocations, refreshAllocations } = useBlockchain();
@@ -30,9 +32,9 @@ const PortfolioOverview = () => {
   useEffect(() => {
     const fetchBalance = async () => {
       if (!isConnected || !address) {
-        // Use default value if not connected
-        setPortfolioValue(28654.32);
-        setPortfolioChange(12.4);
+        // Use zero value if not connected
+        setPortfolioValue(0);
+        setPortfolioChange(0);
         setIsLoading(false);
         return;
       }
@@ -64,8 +66,8 @@ const PortfolioOverview = () => {
         // Calculate portfolio value
         const calculatedValue = parseFloat(balanceEth) * iotaPrice;
         
-        // Set portfolio value with a minimum of $100 for better UI display
-        setPortfolioValue(Math.max(calculatedValue, 100));
+        // Set portfolio value
+        setPortfolioValue(calculatedValue);
         
         // Generate a realistic portfolio change (mock data)
         const randomChange = (Math.random() * 20) - 10; // -10% to +10%
@@ -76,9 +78,9 @@ const PortfolioOverview = () => {
         
       } catch (error) {
         console.error('Error fetching wallet balance:', error);
-        // Fallback to default values
-        setPortfolioValue(28654.32);
-        setPortfolioChange(12.4);
+        // Fallback to zero values
+        setPortfolioValue(0);
+        setPortfolioChange(0);
       } finally {
         setIsLoading(false);
       }
@@ -86,14 +88,16 @@ const PortfolioOverview = () => {
     
     fetchBalance();
     
-    // Set up a refresh interval (every 60 seconds)
-    const intervalId = setInterval(() => {
-      fetchBalance();
-      refreshAllocations(); // Also refresh allocations periodically
-    }, 60000);
-    
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
+    // Set up a refresh interval (every 60 seconds) if connected
+    if (isConnected) {
+      const intervalId = setInterval(() => {
+        fetchBalance();
+        refreshAllocations(); // Also refresh allocations periodically
+      }, 60000);
+      
+      // Clean up interval on component unmount
+      return () => clearInterval(intervalId);
+    }
   }, [address, isConnected, refreshAllocations]);
   
   // Format the portfolio data from allocations
@@ -102,6 +106,11 @@ const PortfolioOverview = () => {
     value: item.allocation,
     color: item.color
   }));
+  
+  // Default data for disconnected state
+  const defaultPortfolioData = [
+    { name: 'Connect Wallet', value: 100, color: '#6B7280' }
+  ];
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,6 +129,14 @@ const PortfolioOverview = () => {
                   <span className="text-xs text-muted-foreground">Fetching balance...</span>
                 </div>
               </div>
+            ) : !isConnected ? (
+              <div className="space-y-2">
+                <h2 className="text-4xl font-bold font-space">$0.00</h2>
+                <div className="flex items-center text-muted-foreground">
+                  <WalletIcon className="h-4 w-4 mr-2" />
+                  <span className="text-xs">Connect wallet to view your portfolio</span>
+                </div>
+              </div>
             ) : (
               <>
                 <h2 className="text-4xl font-bold font-space">${portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</h2>
@@ -132,7 +149,7 @@ const PortfolioOverview = () => {
           </div>
           
           <div className="grid grid-cols-2 gap-6">
-            {portfolioData.map((item) => (
+            {(isConnected ? portfolioData : []).map((item) => (
               <div key={item.name} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{item.name}</span>
@@ -147,6 +164,16 @@ const PortfolioOverview = () => {
                 />
               </div>
             ))}
+            
+            {!isConnected && (
+              <div className="col-span-2 flex flex-col items-center justify-center py-8">
+                <p className="text-muted-foreground mb-4">Connect your wallet to view your portfolio allocations</p>
+                <Button variant="outline" className="bg-nebula-600/20 hover:bg-nebula-600/30">
+                  <WalletIcon className="h-4 w-4 mr-2" />
+                  Connect Wallet
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter>
@@ -165,7 +192,7 @@ const PortfolioOverview = () => {
           <div className="w-48 h-48 relative">
             <PieChart width={200} height={200}>
               <Pie
-                data={portfolioData}
+                data={isConnected ? portfolioData : defaultPortfolioData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -173,7 +200,7 @@ const PortfolioOverview = () => {
                 paddingAngle={5}
                 dataKey="value"
               >
-                {portfolioData.map((entry, index) => (
+                {(isConnected ? portfolioData : defaultPortfolioData).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -181,6 +208,11 @@ const PortfolioOverview = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               {isLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-nebula-400" />
+              ) : !isConnected ? (
+                <>
+                  <WalletIcon className="h-6 w-6 text-gray-400" />
+                  <span className="mt-1 font-roboto-mono text-sm text-gray-400">Not Connected</span>
+                </>
               ) : (
                 <>
                   <TrendingUp className="h-6 w-6 text-nebula-400" />
@@ -192,14 +224,20 @@ const PortfolioOverview = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <ul className="w-full flex flex-wrap gap-2">
-            {portfolioData.map((item) => (
-              <li key={item.name} className="flex items-center">
-                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                <span className="text-xs">{item.name}</span>
-              </li>
-            ))}
-          </ul>
+          {isConnected ? (
+            <ul className="w-full flex flex-wrap gap-2">
+              {portfolioData.map((item) => (
+                <li key={item.name} className="flex items-center">
+                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-xs">{item.name}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="w-full text-center text-muted-foreground text-xs">
+              Connect your wallet to view your portfolio distribution
+            </div>
+          )}
         </CardFooter>
       </Card>
     </div>
