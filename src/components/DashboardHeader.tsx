@@ -1,9 +1,84 @@
-// src/components/DashboardHeader.tsx
-import { Bell } from 'lucide-react';
+import { Droplets, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WalletConnect from '@/components/WalletConnect';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
+import { iotaTestnet } from '@/lib/chains';
 
 const DashboardHeader = () => {
+  const handleFaucetClick = () => {
+    window.open('https://evm-toolkit.evm.testnet.iotaledger.net/', '_blank');
+  };
+
+  const handleAddNetwork = async () => {
+    // Check if MetaMask is installed
+    if (typeof window.ethereum === 'undefined') {
+      toast.error('MetaMask Not Found', 'Please install MetaMask to add the IOTA EVM Testnet.');
+      return;
+    }
+
+    try {
+      // Convert chainId to hex format (required by MetaMask)
+      const chainIdHex = `0x${iotaTestnet.id.toString(16)}`;
+      
+      // First, try to switch to the network if it already exists
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: chainIdHex }],
+        });
+        toast.success('Network Switched', 'Successfully switched to IOTA EVM Testnet.');
+        return;
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          console.log('Network not found, attempting to add it...');
+        } else {
+          // For other errors, just try to add the network
+          console.log('Error switching network:', switchError);
+        }
+      }
+      
+      // Prepare the network params with corrected symbol
+      // Note: MetaMask expects "IOTA" not "MIOTA" for this testnet
+      const networkParams = {
+        chainId: chainIdHex,
+        chainName: iotaTestnet.name,
+        nativeCurrency: {
+          ...iotaTestnet.nativeCurrency,
+          symbol: 'IOTA', // Override the symbol to match what MetaMask expects
+        },
+        rpcUrls: [iotaTestnet.rpcUrls.default.http[0]],
+        blockExplorerUrls: [iotaTestnet.blockExplorers.default.url],
+      };
+      
+      console.log('Adding network with params:', networkParams);
+      
+      // Add the network to MetaMask
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [networkParams],
+      });
+      
+      toast.success('Network Added', 'IOTA EVM Testnet has been added to your wallet.');
+    } catch (error: any) {
+      console.error('Error adding network:', error);
+      
+      // Check for specific error about symbol mismatch
+      if (error.message && error.message.includes('nativeCurrency.symbol does not match')) {
+        toast.info(
+          'Network Already Added', 
+          'The IOTA EVM Testnet is already in your wallet. Please switch to it manually.'
+        );
+      } else {
+        toast.error(
+          'Failed to Add Network', 
+          error.message || 'Please try adding the network manually.'
+        );
+      }
+    }
+  };
+
   return (
     <div className="flex items-center justify-between py-6 px-8">
       <div className="flex items-center space-x-3">
@@ -14,10 +89,45 @@ const DashboardHeader = () => {
       </div>
       
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-0 right-0 h-2 w-2 bg-destructive rounded-full"></span>
-        </Button>
+        {/* Add Network Button */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none hover:opacity-90"
+                onClick={handleAddNetwork}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Network
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Add IOTA EVM Testnet to MetaMask</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        {/* Faucet Button */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none hover:opacity-90"
+                onClick={handleFaucetClick}
+              >
+                <Droplets className="h-4 w-4 mr-2" />
+                Faucet
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Get testnet tokens for development</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         <WalletConnect />
       </div>
