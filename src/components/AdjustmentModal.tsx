@@ -26,10 +26,14 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
   const [total, setTotal] = useState(100);
   const [hasChanges, setHasChanges] = useState(false);
   const [isBalancing, setIsBalancing] = useState(false);
+  const [transactionSubmitted, setTransactionSubmitted] = useState(false);
 
   // Initialize with current allocations when modal opens
   useEffect(() => {
     if (open && action) {
+      // Reset transaction state when modal opens
+      setTransactionSubmitted(false);
+      
       // Start with current allocations from blockchain context
       const currentAllocations = pendingAllocations || allocations;
       
@@ -66,6 +70,15 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       }
     }
   }, [open, action, allocations, pendingAllocations]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setIsApplying(false);
+      setHasChanges(false);
+      setTransactionSubmitted(false);
+    }
+  }, [open]);
 
   // Auto-balance allocations to ensure total is 100%
   const autoBalanceAllocations = useCallback((allocationsToBalance: any[]) => {
@@ -150,6 +163,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
     const updated = localAllocations.map(item => 
       item.id === id ? { ...item, allocation: value } : item
     );
+    
     setLocalAllocations(updated);
     setHasChanges(true);
     
@@ -159,6 +173,11 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
   };
 
   const handleApply = async () => {
+    // Prevent double-submission
+    if (isApplying || transactionSubmitted) {
+      return;
+    }
+    
     if (total !== 100) {
       toast.error("Invalid Allocation", "Total allocation must equal 100%");
       return;
@@ -167,17 +186,58 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
     setIsApplying(true);
     
     try {
-      // Update pending allocations in the blockchain context
-      setPendingAllocations(localAllocations);
+      // Create a deep copy of localAllocations
+      const allocationsToApply = JSON.parse(JSON.stringify(localAllocations));
       
-      // Close the modal first to improve UX
+      // Log current state for debugging
+      console.log('Current state before applying:', {
+        localAllocations: allocationsToApply,
+        currentAllocations: allocations,
+        pendingAllocations
+      });
+      
+      // Check if there are actual changes compared to the current allocations
+      let hasRealChanges = false;
+      for (const newAlloc of allocationsToApply) {
+        const currentAlloc = allocations.find(a => a.id === newAlloc.id);
+        if (currentAlloc && currentAlloc.allocation !== newAlloc.allocation) {
+          console.log(`Detected change for ${newAlloc.id}: ${currentAlloc.allocation} -> ${newAlloc.allocation}`);
+          hasRealChanges = true;
+          break;
+        }
+      }
+      
+      if (!hasRealChanges) {
+        console.log('No real changes detected, showing toast and closing modal');
+        toast.info("No Changes Detected", "Your allocations match the current portfolio. No update needed.");
+        onOpenChange(false);
+        setIsApplying(false);
+        return;
+      }
+      
+      console.log('Real changes detected, submitting to blockchain');
+      
+      // CRITICAL: Update pending allocations in the context BEFORE closing the modal
+      setPendingAllocations(allocationsToApply);
+      
+      // Give a small delay to ensure state is updated before proceeding
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Close the modal immediately to improve UX
       onOpenChange(false);
       
-      // Apply the changes to the blockchain
-      const success = await applyAllocations();
+      // Then initiate the blockchain transaction with a direct reference to the allocations
+      // This avoids relying on the pendingAllocations state which might not be updated yet
+      console.log('Calling applyAllocations with direct allocations reference');
+      const success = await applyAllocations(true, allocationsToApply);
       
-      if (success) {
-        toast.success("Allocations Updated", "Your portfolio has been rebalanced successfully!");
+      if (!success) {
+        console.log('Transaction failed, reopening modal');
+        // If transaction failed, reopen the modal with the same state
+        setTransactionSubmitted(false);
+        onOpenChange(true);
+      } else {
+        console.log('Transaction submitted successfully');
       }
     } catch (error) {
       console.error('Error applying allocations:', error);
@@ -186,8 +246,8 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
         error instanceof Error ? error.message : "Failed to update allocations. Please try again."
       );
       
-      // Reopen the modal if there was an error
-      onOpenChange(true);
+      // Reset transaction state so user can try again
+      setTransactionSubmitted(false);
     } finally {
       setIsApplying(false);
     }
@@ -205,7 +265,11 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Prevent closing the modal during transaction submission
+      if (isApplying) return;
+      onOpenChange(newOpen);
+    }}>
       <DialogContent className="sm:max-w-[90vw] md:max-w-[800px] bg-cosmic-900 border-cosmic-700 max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
@@ -287,7 +351,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
                       max={100}
                       step={1}
                       onValueChange={(value) => handleSliderChange(item.id, value[0])}
-                      className={`[&>span:first-child]:bg-gradient-to-r [&>span:first-child]:from-${item.color.replace('#', '')} [&>span:first-child]:to-${item.color.replace('#', '')}/70`}
+                      className="[&>span:first-child]:bg-gradient-to-r [&>span:first-child]:from-nebula-600 [&>span:first-child]:to-nebula-400"
                       aria-label={`Adjust ${item.name} allocation`}
                     />
                   </div>
@@ -388,7 +452,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
                       <div className="flex justify-between mb-2">
                         <span className="text-sm font-medium">Volatility</span>
                         <span className="text-sm">
-                          {localAllocations.some(a => a.id === 'meme' && a.allocation > 15) ? 'High' : 
+                        {localAllocations.some(a => a.id === 'meme' && a.allocation > 15) ? 'High' : 
                            localAllocations.some(a => a.id === 'meme' && a.allocation > 10) ? 'Medium' : 'Low'}
                         </span>
                       </div>
@@ -427,7 +491,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
             <Button 
               className="bg-gradient-button hover:opacity-90" 
               onClick={handleApply} 
-              disabled={total !== 100 || isApplying || isUpdatingAllocations}
+              disabled={total !== 100 || isApplying || isUpdatingAllocations || transactionSubmitted}
             >
               {isApplying || isUpdatingAllocations ? (
                 <>
@@ -446,4 +510,3 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
 };
 
 export default AdjustmentModal;
-    

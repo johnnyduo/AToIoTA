@@ -553,9 +553,12 @@ const AIChat = () => {
       // First, get the current allocations from the blockchain context
       const currentAllocations = pendingAllocations || allocations;
       
+      // Create a deep copy to avoid reference issues
+      const currentAllocationsCopy = JSON.parse(JSON.stringify(currentAllocations));
+      
       // For each change in the action, update the 'from' value to match current allocation
       const updatedChanges = action.changes.map((change: any) => {
-        const currentAllocation = currentAllocations.find((a: any) => a.id === change.category);
+        const currentAllocation = currentAllocationsCopy.find((a: any) => a.id === change.category);
         return {
           ...change,
           from: currentAllocation ? currentAllocation.allocation : change.from
@@ -567,6 +570,8 @@ const AIChat = () => {
         ...action,
         changes: updatedChanges
       };
+      
+      console.log('Setting current action for modal:', updatedAction);
       
       // Set the current action and open the modal
       setCurrentAction(updatedAction);

@@ -39,7 +39,7 @@ interface BlockchainContextType {
   allocations: Allocation[];
   pendingAllocations: Allocation[] | null;
   setPendingAllocations: (allocations: Allocation[] | null) => void;
-  applyAllocations: () => Promise<boolean>;
+  applyAllocations: (fromModal?: boolean, directAllocations?: Allocation[]) => Promise<boolean>;
   isLoadingAllocations: boolean;
   isUpdatingAllocations: boolean;
   isConfirmingTransaction: boolean;
@@ -187,15 +187,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       
       // Show success message
       if (status === 'confirmed') {
-        toast.success(
-          "Transaction Confirmed", 
-          "Your allocation changes have been confirmed on the blockchain."
-        );
+        toast.success("Transaction Confirmed: Your allocation changes have been confirmed on the blockchain.");
       } else {
-        toast.error(
-          "Transaction Failed", 
-          "Your allocation changes failed to process on the blockchain."
-        );
+        toast.error("Transaction Failed: Your allocation changes failed to process on the blockchain.");
       }
     }
   }, [isConfirmed, pendingTxHash, receipt]);
@@ -223,12 +217,16 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
   
   // Apply pending allocations to the blockchain
-  const applyAllocations = async (): Promise<boolean> => {
+  const applyAllocations = async (fromModal: boolean = false, directAllocations?: Allocation[]): Promise<boolean> => {
     console.log('Starting applyAllocations with:', {
       isConnected,
       isContractOwner,
       hasPendingAllocations: !!pendingAllocations,
-      pendingAllocations
+      hasDirectAllocations: !!directAllocations,
+      pendingAllocations,
+      directAllocations,
+      currentAllocations: allocations,
+      fromModal
     });
     
     if (!isConnected) {
@@ -244,18 +242,52 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
-    if (!pendingAllocations) {
-      toast.error("No Changes", "There are no pending allocation changes to apply.");
+    // Use direct allocations if provided, otherwise use pending allocations
+    const allocationsToUse = directAllocations || pendingAllocations;
+    
+    if (!allocationsToUse) {
+      // Only show this toast if not called from modal (to avoid duplicate messages)
+      if (!fromModal) {
+        toast.error("No Changes", "There are no pending allocation changes to apply.");
+      }
       return false;
     }
     
-    // Make a deep copy of pendingAllocations to ensure we don't lose it during processing
-    const allocationsToSubmit = JSON.parse(JSON.stringify(pendingAllocations));
+    // Make a deep copy to ensure we don't lose it during processing
+    const allocationsToSubmit = JSON.parse(JSON.stringify(allocationsToUse));
     
     // Validate total allocation is 100%
     const total = allocationsToSubmit.reduce((sum, item) => sum + item.allocation, 0);
     if (total !== 100) {
       toast.error("Invalid Allocation", `Total allocation must be 100%. Current total: ${total}%`);
+      return false;
+    }
+    
+    // Check if there are actual changes compared to current allocations
+    let hasChanges = false;
+    console.log('Checking for changes between:');
+    console.log('Current:', allocations);
+    console.log('To Submit:', allocationsToSubmit);
+    
+    for (const newAlloc of allocationsToSubmit) {
+      const currentAlloc = allocations.find(a => a.id === newAlloc.id);
+      if (!currentAlloc) {
+        console.log(`New allocation found: ${newAlloc.id} with ${newAlloc.allocation}%`);
+        hasChanges = true;
+      } else if (currentAlloc.allocation !== newAlloc.allocation) {
+        console.log(`Change detected for ${newAlloc.id}: ${currentAlloc.allocation}% -> ${newAlloc.allocation}%`);
+        hasChanges = true;
+      }
+    }
+    
+    if (!hasChanges) {
+      console.log('No changes detected between current and pending allocations');
+      // Only show this toast if not called from modal (to avoid duplicate messages)
+      if (!fromModal) {
+        toast.info("No Changes Detected", "Your allocations match the current portfolio. No update needed.");
+      }
+      // Clear pending allocations since they match current state
+      setPendingAllocations(null);
       return false;
     }
     
@@ -284,49 +316,85 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
         total: allocationsToSubmit.reduce((sum, item) => sum + item.allocation, 0)
       });
       
-      // Call the contract directly using ethers.js
-      const tx = await updateAllocations(allocationsToSubmit);
-      
-      if (!tx?.hash) {
-        throw new Error('No transaction hash returned');
+      try {
+        // Call the contract directly using ethers.js
+        const tx = await updateAllocations(allocationsToSubmit);
+        
+        if (!tx?.hash) {
+          throw new Error('No transaction hash returned');
+        }
+        
+        console.log('Transaction submitted:', tx.hash);
+        
+        // Update transaction with hash
+        updateTransaction(txId, { hash: tx.hash, id: tx.hash });
+        
+        // Set the pending hash for monitoring
+        setPendingTxHash(tx.hash);
+        
+        // Update local state immediately for better UX
+        setAllocations([...allocationsToSubmit]);
+        
+        // Store the updated allocations in localStorage for persistence
+        localStorage.setItem(ALLOCATIONS_STORAGE_KEY, JSON.stringify(allocationsToSubmit));
+        
+        // Clear pending allocations AFTER we've used them
+        setPendingAllocations(null);
+        
+        // Show toast with link to explorer
+        toast.success(
+          fromModal ? "Portfolio Rebalance Submitted" : "Transaction Submitted", 
+          <div>
+            {fromModal 
+              ? "Your allocation changes have been submitted to the blockchain." 
+              : "Transaction has been submitted to the blockchain."
+            }{' '}
+            <a 
+              href={getExplorerUrl(tx.hash)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              View on Explorer
+            </a>
+          </div>
+        );
+        
+        return true;
+      } catch (error: any) {
+        // Check if this is a user rejection/cancellation
+        const isUserCancelled = 
+          error.code === 4001 || // MetaMask user rejected
+          error.message?.includes('User denied') || 
+          error.message?.includes('user rejected') ||
+          error.message?.includes('cancelled') ||
+          error.message?.includes('canceled');
+        
+        if (isUserCancelled) {
+          console.log('Transaction was cancelled by user');
+          // Update transaction status to cancelled
+          updateTransaction(txId, { status: 'failed', details: { ...pendingTx.details, error: 'Transaction cancelled by user' } });
+          
+          // Show a different toast for user cancellation
+          toast.info(
+            "Transaction Cancelled", 
+            "You cancelled the transaction. No changes were made to your portfolio."
+          );
+        } else {
+          // For other errors, show the error toast
+          console.error('Error in contract interaction:', error);
+          updateTransaction(txId, { status: 'failed', details: { ...pendingTx.details, error: error.message || 'Transaction failed' } });
+          
+          toast.error(
+            "Transaction Failed", 
+            error.message || "Failed to update allocations. Please try again."
+          );
+        }
+        
+        return false;
       }
-      
-      console.log('Transaction submitted:', tx.hash);
-      
-      // Update transaction with hash
-      updateTransaction(txId, { hash: tx.hash, id: tx.hash });
-      
-      // Set the pending hash for monitoring
-      setPendingTxHash(tx.hash);
-      
-      // Update local state immediately for better UX
-      setAllocations([...allocationsToSubmit]);
-      
-      // Store the updated allocations in localStorage for persistence
-      localStorage.setItem(ALLOCATIONS_STORAGE_KEY, JSON.stringify(allocationsToSubmit));
-      
-      // Clear pending allocations AFTER we've used them
-      setPendingAllocations(null);
-      
-      // Show pending message with link to explorer
-      toast.success(
-        "Transaction Submitted", 
-        <div>
-          Transaction has been submitted to the blockchain.{' '}
-          <a 
-            href={getExplorerUrl(tx.hash)} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            View on Explorer
-          </a>
-        </div>
-      );
-      
-      return true;
     } catch (error: any) {
-      console.error('Error updating allocations:', error);
+      console.error('Error in applyAllocations:', error);
       
       // Add a failed transaction
       const errorTxId = `failed_${Date.now().toString(16)}`;
