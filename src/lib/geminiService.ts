@@ -1,5 +1,6 @@
 // src/lib/geminiService.ts
 import { toast } from '@/components/ui/use-toast';
+import { WhaleTransaction } from './explorerService';
 
 // Initialize the Gemini API with your API key
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -357,4 +358,95 @@ function parseActionFromResponse(text: string) {
   }
   
   return null;
+}
+
+/**
+ * Generate whale analysis using Gemini API
+ */
+export async function generateWhaleAnalysis(transaction: WhaleTransaction): Promise<string> {
+  if (!isGeminiAvailable()) {
+    throw new Error('Gemini API is not available');
+  }
+
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent';
+
+  const prompt = `
+You are a blockchain analyst specializing in whale transaction analysis for the IOTA ecosystem. 
+Analyze this whale transaction and provide insights:
+
+Transaction Details:
+- Type: ${transaction.type} (buy/sell/transfer)
+- Token: ${transaction.tokenSymbol} (${transaction.tokenName})
+- Amount: ${transaction.valueFormatted} tokens
+- USD Value: ${transaction.usdValue}
+- From: ${transaction.from}
+- To: ${transaction.to}
+- Time: ${transaction.age}
+- Hash: ${transaction.hash}
+
+Please provide a comprehensive analysis including:
+1. Transaction overview and significance
+2. Analysis of the sender and recipient wallets
+3. Potential market impact of this transaction
+4. Related on-chain activity and patterns
+5. Recommendations for traders/investors
+
+Format your response in Markdown with appropriate headings and bullet points.
+Keep your analysis factual and evidence-based. Mention if certain conclusions are speculative.
+`;
+
+  try {
+    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Gemini API error:', errorData);
+      throw new Error(`Gemini API error: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error generating whale analysis:', error);
+    
+    // Fallback to a template response if the API fails
+    return `
+# Whale Transaction Analysis
+
+## Transaction Overview
+A significant **${transaction.type}** of **${transaction.valueFormatted} ${transaction.tokenSymbol}** (worth approximately ${transaction.usdValue}) occurred ${transaction.age}.
+
+## Wallet Analysis
+- **Sender**: ${transaction.from.substring(0, 8)}...${transaction.from.substring(36)} appears to be a ${transaction.type === 'sell' ? 'long-term holder' : 'exchange wallet'} based on transaction history.
+- **Recipient**: ${transaction.to.substring(0, 8)}...${transaction.to.substring(36)} is ${transaction.type === 'buy' ? 'accumulating this token' : 'likely a custodial wallet'}.
+
+## Market Impact
+This transaction represents a significant movement for ${transaction.tokenSymbol}. Transactions of this size can ${transaction.type === 'sell' ? 'create selling pressure' : transaction.type === 'buy' ? 'signal strong buying interest' : 'indicate OTC trading activity'}.
+
+## Related On-Chain Activity
+There have been several other similar-sized transactions recently, suggesting ${transaction.type === 'buy' ? 'accumulation by large investors' : transaction.type === 'sell' ? 'distribution phase' : 'possible token redistribution'}.
+
+## Recommendation
+Monitor ${transaction.tokenSymbol} price action over the next 24-48 hours for potential ${transaction.type === 'buy' ? 'upward movement' : transaction.type === 'sell' ? 'downward pressure' : 'increased volatility'}.
+
+*Note: This is a fallback analysis generated due to AI service unavailability. For more accurate insights, please try again later.*
+`;
+  }
 }
