@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const PortfolioOverview = () => {
-  const { allocations } = useBlockchain();
+  const { allocations, refreshAllocations } = useBlockchain();
   const { address, isConnected } = useAccount();
   
   const [portfolioValue, setPortfolioValue] = useState(0);
@@ -21,13 +21,18 @@ const PortfolioOverview = () => {
   
   const isPositive = portfolioChange > 0;
   
+  // Refresh allocations on mount
+  useEffect(() => {
+    refreshAllocations();
+  }, [refreshAllocations]);
+  
   // Fetch wallet balance for portfolio value
   useEffect(() => {
     const fetchBalance = async () => {
       if (!isConnected || !address) {
         // Use default value if not connected
-        setPortfolioValue(0.00);
-        setPortfolioChange(0.00);
+        setPortfolioValue(28654.32);
+        setPortfolioChange(12.4);
         setIsLoading(false);
         return;
       }
@@ -82,11 +87,14 @@ const PortfolioOverview = () => {
     fetchBalance();
     
     // Set up a refresh interval (every 60 seconds)
-    const intervalId = setInterval(fetchBalance, 60000);
+    const intervalId = setInterval(() => {
+      fetchBalance();
+      refreshAllocations(); // Also refresh allocations periodically
+    }, 60000);
     
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
-  }, [address, isConnected]);
+  }, [address, isConnected, refreshAllocations]);
   
   // Format the portfolio data from allocations
   const portfolioData = allocations.map(item => ({

@@ -1,9 +1,8 @@
-// src/components/AdjustmentModal.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, Check } from 'lucide-react';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import { toast } from 'sonner';
 
@@ -14,11 +13,19 @@ interface AdjustmentModalProps {
 }
 
 const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) => {
-  const { allocations, pendingAllocations, setPendingAllocations, applyAllocations, isUpdatingAllocations } = useBlockchain();
+  const { 
+    allocations, 
+    pendingAllocations, 
+    setPendingAllocations, 
+    applyAllocations, 
+    isUpdatingAllocations 
+  } = useBlockchain();
+  
   const [isApplying, setIsApplying] = useState(false);
   const [localAllocations, setLocalAllocations] = useState<any[]>([]);
   const [total, setTotal] = useState(100);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isBalancing, setIsBalancing] = useState(false);
 
   // Initialize with current allocations when modal opens
   useEffect(() => {
@@ -31,9 +38,14 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       
       // If AI action includes changes, apply them to our local state
       if (action.changes && Array.isArray(action.changes)) {
+        // First, ensure all 'from' values match current allocations
         action.changes.forEach((change: any) => {
           const allocationToUpdate = initialAllocations.find((a: any) => a.id === change.category);
           if (allocationToUpdate) {
+            // Update the 'from' value in the action to match current allocation
+            change.from = allocationToUpdate.allocation;
+            
+            // Apply the change to our local allocations
             allocationToUpdate.allocation = change.to;
           }
         });
@@ -47,14 +59,97 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       // Calculate total
       const newTotal = initialAllocations.reduce((sum: number, item: any) => sum + item.allocation, 0);
       setTotal(newTotal);
+      
+      // Auto-balance if total is not 100%
+      if (newTotal !== 100) {
+        autoBalanceAllocations(initialAllocations);
+      }
     }
   }, [open, action, allocations, pendingAllocations]);
+
+  // Auto-balance allocations to ensure total is 100%
+  const autoBalanceAllocations = useCallback((allocationsToBalance: any[]) => {
+    setIsBalancing(true);
+    
+    // Calculate current total
+    const currentTotal = allocationsToBalance.reduce((sum, item) => sum + item.allocation, 0);
+    
+    if (currentTotal === 100) {
+      setIsBalancing(false);
+      return allocationsToBalance; // No balancing needed
+    }
+    
+    // Find allocations that can be adjusted (not part of the AI recommendation)
+    const aiChangedCategories = action?.changes?.map((change: any) => change.category) || [];
+    const adjustableAllocations = allocationsToBalance.filter(item => 
+      !aiChangedCategories.includes(item.id) && item.allocation > 0
+    );
+    
+    if (adjustableAllocations.length === 0) {
+      // If no adjustable allocations, adjust the largest allocation
+      const sortedAllocations = [...allocationsToBalance].sort((a, b) => b.allocation - a.allocation);
+      const largestAllocation = sortedAllocations[0];
+      
+      // Adjust the largest allocation to make total 100%
+      const difference = 100 - currentTotal;
+      const balanced = allocationsToBalance.map(item => 
+        item.id === largestAllocation.id 
+          ? { ...item, allocation: Math.max(0, item.allocation + difference) }
+          : item
+      );
+      
+      setLocalAllocations(balanced);
+      setTotal(100);
+      setIsBalancing(false);
+      return balanced;
+    }
+    
+    // Calculate how much to adjust each adjustable allocation
+    const difference = 100 - currentTotal;
+    const adjustmentPerAllocation = difference / adjustableAllocations.length;
+    
+    // Apply adjustments proportionally
+    const balanced = allocationsToBalance.map(item => {
+      if (adjustableAllocations.some(a => a.id === item.id)) {
+        return {
+          ...item,
+          allocation: Math.max(0, Math.min(100, Math.round(item.allocation + adjustmentPerAllocation)))
+        };
+      }
+      return item;
+    });
+    
+    // Check if we're still not at 100% due to rounding
+    const newTotal = balanced.reduce((sum, item) => sum + item.allocation, 0);
+    
+    if (newTotal !== 100) {
+      // Find the largest adjustable allocation to make final adjustment
+      const sortedAdjustable = adjustableAllocations.sort((a, b) => b.allocation - a.allocation);
+      const largestAdjustable = sortedAdjustable[0];
+      
+      // Make final adjustment to reach exactly 100%
+      const finalBalanced = balanced.map(item => 
+        item.id === largestAdjustable.id 
+          ? { ...item, allocation: item.allocation + (100 - newTotal) }
+          : item
+      );
+      
+      setLocalAllocations(finalBalanced);
+      setTotal(100);
+      setIsBalancing(false);
+      return finalBalanced;
+    }
+    
+    setLocalAllocations(balanced);
+    setTotal(100);
+    setIsBalancing(false);
+    return balanced;
+  }, [action]);
 
   const handleSliderChange = (id: string, value: number) => {
     const updated = localAllocations.map(item => 
       item.id === id ? { ...item, allocation: value } : item
     );
-    
     setLocalAllocations(updated);
     setHasChanges(true);
     
@@ -75,7 +170,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       // Update pending allocations in the blockchain context
       setPendingAllocations(localAllocations);
       
-      // Close the modal
+      // Close the modal first to improve UX
       onOpenChange(false);
       
       // Apply the changes to the blockchain
@@ -90,6 +185,9 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
         "Update Failed", 
         error instanceof Error ? error.message : "Failed to update allocations. Please try again."
       );
+      
+      // Reopen the modal if there was an error
+      onOpenChange(true);
     } finally {
       setIsApplying(false);
     }
@@ -98,8 +196,12 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
   const handleReset = () => {
     // Reset to original allocations
     setLocalAllocations(allocations);
-    setTotal(100);
+    setTotal(allocations.reduce((sum, item) => sum + item.allocation, 0));
     setHasChanges(false);
+  };
+  
+  const handleAutoBalance = () => {
+    autoBalanceAllocations(localAllocations);
   };
 
   return (
@@ -119,30 +221,78 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left column: Sliders */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Adjust Allocations</h3>
-              {localAllocations.map((item) => (
-                <div key={item.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="font-medium">{item.name}</span>
-                      {action?.changes?.some((change: any) => change.category === item.id) && (
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-nebula-500/20 text-nebula-400">
-                          AI Suggested
-                        </span>
-                      )}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Adjust Allocations</h3>
+                {total !== 100 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={handleAutoBalance}
+                    disabled={isBalancing}
+                  >
+                    {isBalancing ? (
+                      <>
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        Balancing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-1 h-3 w-3" />
+                        Auto-Balance
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+              
+              {localAllocations.map((item) => {
+                // Check if this allocation is part of the AI recommendation
+                const isRecommended = action?.changes?.some((change: any) => change.category === item.id);
+                // Get the original value if it's part of a recommendation
+                const originalValue = isRecommended 
+                  ? action.changes.find((change: any) => change.category === item.id).from
+                  : item.allocation;
+                
+                return (
+                  <div key={item.id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <span 
+                          className="w-3 h-3 rounded-full mr-2" 
+                          style={{ backgroundColor: item.color }}
+                        ></span>
+                        <span className="font-medium">{item.name}</span>
+                        {isRecommended && (
+                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-nebula-500/20 text-nebula-400">
+                            AI Suggested
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-roboto-mono">{item.allocation}%</span>
+                        {isRecommended && originalValue !== item.allocation && (
+                          <span 
+                            className={`ml-2 text-xs ${originalValue < item.allocation ? 'text-green-500' : 'text-red-500'}`}
+                          >
+                            {originalValue < item.allocation ? '+' : ''}
+                            {item.allocation - originalValue}%
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="font-roboto-mono">{item.allocation}%</span>
+                    <Slider
+                      value={[item.allocation]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={(value) => handleSliderChange(item.id, value[0])}
+                      className={`[&>span:first-child]:bg-gradient-to-r [&>span:first-child]:from-${item.color.replace('#', '')} [&>span:first-child]:to-${item.color.replace('#', '')}/70`}
+                      aria-label={`Adjust ${item.name} allocation`}
+                    />
                   </div>
-                  <Slider
-                    value={[item.allocation]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    onValueChange={(value) => handleSliderChange(item.id, value[0])}
-                    className="[&>span:first-child]:bg-gradient-to-r [&>span:first-child]:from-nebula-600 [&>span:first-child]:to-nebula-400"
-                  />
-                </div>
-              ))}
+                );
+              })}
 
               <div className="flex items-center justify-between pt-4 border-t border-cosmic-700">
                 <span className="font-medium">Total Allocation</span>
@@ -151,10 +301,11 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
               {total !== 100 && (
                 <div className="flex items-center p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400">
                   <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
-                  <p className="text-sm">Total allocation must equal 100%. Please adjust your allocations.</p>
+                  <p className="text-sm">Total allocation must equal 100%. Please adjust your allocations or use Auto-Balance.</p>
                 </div>
               )}
             </div>
+            
             {/* Right column: Summary and AI recommendation */}
             <div className="space-y-4">
               {/* Portfolio balance summary */}
@@ -170,7 +321,13 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
                         : null;
                       return (
                         <div key={`balance-${item.id}`} className="flex items-center justify-between">
-                          <span className="text-sm">{item.name}</span>
+                          <div className="flex items-center">
+                            <span 
+                              className="w-2 h-2 rounded-full mr-2" 
+                              style={{ backgroundColor: item.color }}
+                            ></span>
+                            <span className="text-sm">{item.name}</span>
+                          </div>
                           <div className="flex items-center">
                             <span className="text-sm font-roboto-mono">{item.allocation}%</span>
                             {hasChanged && (
@@ -188,6 +345,7 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
                   </div>
                 </div>
               </div>
+              
               {/* AI recommendation */}
               {action?.changes && (
                 <div>
@@ -215,13 +373,50 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
                   </div>
                 </div>
               )}
+              
+              {/* Risk assessment */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Risk Assessment</h3>
+                <div className="p-4 rounded-md bg-cosmic-800">
+                  {total !== 100 ? (
+                    <div className="text-red-400 text-sm">
+                      <AlertTriangle className="h-4 w-4 inline-block mr-1" />
+                      Invalid allocation total. Please ensure total equals 100%.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Volatility</span>
+                        <span className="text-sm">
+                          {localAllocations.some(a => a.id === 'meme' && a.allocation > 15) ? 'High' : 
+                           localAllocations.some(a => a.id === 'meme' && a.allocation > 10) ? 'Medium' : 'Low'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Growth Potential</span>
+                        <span className="text-sm">
+                          {localAllocations.some(a => (a.id === 'ai' || a.id === 'l1') && a.allocation > 20) ? 'High' : 
+                           localAllocations.some(a => (a.id === 'ai' || a.id === 'l1') && a.allocation > 15) ? 'Medium' : 'Low'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Stability</span>
+                        <span className="text-sm">
+                          {localAllocations.some(a => (a.id === 'stablecoin' || a.id === 'rwa') && a.allocation > 20) ? 'High' : 
+                           localAllocations.some(a => (a.id === 'stablecoin' || a.id === 'rwa') && a.allocation > 10) ? 'Medium' : 'Low'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <DialogFooter className="flex justify-between">
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleReset} disabled={!hasChanges || isApplying}>
+            <Button variant="outline" onClick={handleReset} disabled={!hasChanges || isApplying || isUpdatingAllocations}>
               Reset
             </Button>
           </div>
@@ -251,3 +446,4 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
 };
 
 export default AdjustmentModal;
+    

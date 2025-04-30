@@ -35,21 +35,24 @@ export const categoryNames: Record<string, string> = {
   'stablecoin': 'Stablecoins',
 };
 
-// Direct contract interaction function using ethers.js
-export async function updateAllocationsDirectly(allocations: Allocation[]): Promise<{ hash: `0x${string}` }> {
+// Direct contract interaction using ethers.js
+export const updateAllocations = async (allocations: Allocation[]) => {
   if (!(window as any).ethereum) {
     throw new Error('No Ethereum provider found. Please install MetaMask or another wallet.');
   }
   
   try {
+    console.log('Starting direct contract interaction with allocations:', allocations);
+    
+    // Request account access explicitly
+    await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+    
+    // Get the provider and signer
     const provider = new ethers.providers.Web3Provider((window as any).ethereum);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
     
-    console.log('Using direct ethers.js contract interaction:', {
-      userAddress,
-      contractAddress: PORTFOLIO_CONTRACT_ADDRESS
-    });
+    console.log('Connected with address:', userAddress);
     
     // Create contract instance
     const contract = new ethers.Contract(
@@ -58,39 +61,41 @@ export async function updateAllocationsDirectly(allocations: Allocation[]): Prom
       signer
     );
     
-    // Check if user is owner
-    const owner = await contract.owner();
-    console.log('Contract owner check:', {
-      owner,
-      userAddress,
-      isOwner: owner.toLowerCase() === userAddress.toLowerCase()
-    });
-    
-    if (owner.toLowerCase() !== userAddress.toLowerCase()) {
-      throw new Error('You are not the owner of this contract. Only the owner can update allocations.');
-    }
-    
-    // Prepare transaction data
+    // Prepare the data for the contract call
     const categories = allocations.map(a => a.id);
     const percentages = allocations.map(a => a.allocation);
     
-    console.log('Calling updateAllocations with:', {
+    console.log('Calling contract with:', {
+      userAddress,
+      contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
       categories,
       percentages
     });
     
-    // Send transaction
-    const tx = await contract.updateAllocations(categories, percentages);
+    // Estimate gas first to check if the transaction will succeed
+    try {
+      const gasEstimate = await contract.estimateGas.updateAllocations(categories, percentages);
+      console.log('Gas estimate:', gasEstimate.toString());
+    } catch (gasError) {
+      console.error('Gas estimation failed:', gasError);
+      throw new Error(`Transaction would fail: ${gasError instanceof Error ? gasError.message : 'Unknown error'}`);
+    }
+    
+    // Call the contract function with explicit gas limit
+    const tx = await contract.updateAllocations(categories, percentages, {
+      gasLimit: ethers.utils.hexlify(300000) // Set a reasonable gas limit
+    });
+    
     console.log('Transaction sent:', tx);
     
     return {
-      hash: tx.hash as `0x${string}`
+      hash: tx.hash
     };
   } catch (error) {
-    console.error('Error in direct contract interaction:', error);
+    console.error('Error in updateAllocations:', error);
     throw error;
   }
-}
+};
 
 // Hook to read allocations from the contract
 export function usePortfolioAllocations() {
@@ -166,26 +171,12 @@ export function useUpdateAllocations() {
     contractAddress: PORTFOLIO_CONTRACT_ADDRESS
   });
   
-  const { 
-    writeAsync, 
-    isPending, 
-    error,
-    isSuccess,
-    data,
-    status
-  } = useContractWrite({
-    address: PORTFOLIO_CONTRACT_ADDRESS,
+  const contractWrite = useContractWrite({
     abi: AutomatedPortfolioABI,
     functionName: 'updateAllocations',
   });
-  
-  console.log('useContractWrite status:', {
-    isPending,
-    error,
-    isSuccess,
-    status,
-    writeAsyncExists: !!writeAsync
-  });
+
+  const { isPending, error, isSuccess, data, status } = contractWrite;
 
   const updateAllocations = async (allocations: Allocation[]) => {
     console.log('updateAllocations called with:', {
@@ -194,19 +185,19 @@ export function useUpdateAllocations() {
       address,
       isOwner,
       contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
-      writeAsyncExists: !!writeAsync
+      writeAsyncExists: typeof contractWrite.writeAsync === 'function'
     });
-    
+
     // Check if wallet is connected
     if (!isConnected || !address) {
       throw new Error('Wallet not connected. Please connect your wallet first.');
     }
-    
+
     // Check if contract address is valid
     if (!PORTFOLIO_CONTRACT_ADDRESS || PORTFOLIO_CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
       throw new Error('Invalid contract address. Please check your environment variables.');
     }
-    
+
     // Check if user is the owner
     if (!isOwner) {
       console.warn('User is not the contract owner:', {
@@ -215,33 +206,32 @@ export function useUpdateAllocations() {
       });
       throw new Error('You are not the owner of this contract. Only the owner can update allocations.');
     }
-    
+
     // Try direct ethers.js approach if wagmi's writeAsync is not available
-    if (!writeAsync) {
+    if (typeof contractWrite.writeAsync !== 'function') {
       console.log('writeAsync not available, using direct ethers.js approach');
-      return updateAllocationsDirectly(allocations);
+      return updateAllocations(allocations);
     }
-    
+
     try {
       // Map allocations to the format expected by the contract
       const categories = allocations.map(a => a.id);
       const percentages = allocations.map(a => BigInt(a.allocation));
-      
+
       console.log('Calling contract with args:', { categories, percentages });
-      
+
       // Call the contract using wagmi
-      const tx = await writeAsync({ 
+      const tx = await contractWrite.writeAsync({ 
         args: [categories, percentages],
       });
-      
+
       console.log('Transaction submitted:', tx);
       return tx;
     } catch (error) {
       console.error('Error updating allocations with wagmi:', error);
-      
       // Fall back to direct ethers.js approach if wagmi fails
       console.log('Falling back to direct ethers.js approach');
-      return updateAllocationsDirectly(allocations);
+      return updateAllocations(allocations);
     }
   };
 

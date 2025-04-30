@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, BarChart2, ArrowRight, TrendingUp, Search } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Bot, User, BarChart2, ArrowRight, TrendingUp, Search, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ interface ChatMessage {
 // Storage key for chat messages in localStorage
 const CHAT_STORAGE_KEY = 'atoiota_chat_messages';
 
-// Market intelligence data for AI suggestions
+// Enhanced market intelligence data for AI suggestions with realistic allocation changes
 const marketInsights = [
   {
     type: 'trending',
@@ -61,8 +61,12 @@ const marketInsights = [
     type: 'news',
     content: "Breaking: ShimmerSea DEX volume has increased 78% following the SMR price rally. According to our technical analysis, the MLUM token is currently undervalued based on TVL metrics. Consider increasing your DeFi exposure.",
     action: {
-      type: 'analysis',
-      description: 'View detailed DeFi Analysis Report for ShimmerSea ecosystem'
+      type: 'rebalance',
+      description: 'Increase DeFi exposure based on ShimmerSea metrics',
+      changes: [
+        { category: 'defi', name: 'DeFi', from: 15, to: 18 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 2 }
+      ]
     }
   },
   {
@@ -87,6 +91,131 @@ const marketInsights = [
         { category: 'meme', name: 'Meme & NFT', from: 22, to: 15 },
         { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
         { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 9 }
+      ]
+    }
+  },
+  {
+    type: 'defi',
+    content: "DeFi yield opportunities analysis: AAVE protocol has increased lending yields to 8.2% APY for stablecoins. Consider shifting 3% from your Layer 1 allocation to DeFi to capitalize on this yield opportunity.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase DeFi allocation to capture higher yields',
+      changes: [
+        { category: 'defi', name: 'DeFi', from: 15, to: 18 },
+        { category: 'l1', name: 'Layer 1', from: 15, to: 12 }
+      ]
+    }
+  },
+  {
+    type: 'layer1',
+    content: "On-chain metrics for SMR are showing strong growth with daily active addresses up 34% this month. The upcoming protocol upgrade could drive further adoption. Consider increasing your Layer 1 exposure.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase Layer 1 allocation based on SMR metrics',
+      changes: [
+        { category: 'l1', name: 'Layer 1', from: 15, to: 18 },
+        { category: 'rwa', name: 'RWA', from: 15, to: 12 }
+      ]
+    }
+  },
+  {
+    type: 'rwa',
+    content: "Real World Assets (RWA) tokens are showing increased institutional adoption. Tokenized real estate platform REALT has onboarded three new institutional investors. Consider increasing your RWA allocation for portfolio stability.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase RWA allocation for portfolio stability',
+      changes: [
+        { category: 'rwa', name: 'RWA', from: 15, to: 18 },
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 7 }
+      ]
+    }
+  },
+  {
+    type: 'bigcap',
+    content: "Bitcoin's correlation with traditional markets has decreased to a 6-month low (0.32), suggesting improved diversification benefits. Consider increasing your Big Cap allocation as a hedge against market uncertainty.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase Bitcoin allocation as market hedge',
+      changes: [
+        { category: 'bigcap', name: 'Big Cap', from: 25, to: 30 },
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 }
+      ]
+    }
+  },
+  {
+    type: 'stablecoin',
+    content: "Market volatility indicators are flashing warning signals with the Crypto Fear & Greed Index at 82 (Extreme Greed). Consider increasing your stablecoin reserves to prepare for potential market corrections.",
+    action: {
+      type: 'protection',
+      description: 'Increase stablecoin reserves as volatility hedge',
+      changes: [
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 10 },
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 }
+      ]
+    }
+  },
+  {
+    type: 'balanced',
+    content: "Portfolio analysis indicates your current allocation is suboptimal based on risk-adjusted return metrics. A more balanced approach across sectors could improve your Sharpe ratio by an estimated 0.4 points.",
+    action: {
+      type: 'rebalance',
+      description: 'Optimize portfolio for better risk-adjusted returns',
+      changes: [
+        { category: 'ai', name: 'AI & DeFi', from: 15, to: 18 },
+        { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 },
+        { category: 'defi', name: 'DeFi', from: 15, to: 17 },
+        { category: 'l1', name: 'Layer 1', from: 15, to: 12 },
+        { category: 'rwa', name: 'RWA', from: 15, to: 15 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 5 }
+      ]
+    }
+  },
+  {
+    type: 'security',
+    content: "Security analysis of your portfolio indicates high exposure to newer, less audited protocols. Consider shifting 5% from AI tokens to more established projects with stronger security track records.",
+    action: {
+      type: 'protection',
+      description: 'Reduce exposure to less secure protocols',
+      changes: [
+        { category: 'ai', name: 'AI & DeFi', from: 15, to: 10 },
+        { category: 'bigcap', name: 'Big Cap', from: 25, to: 30 }
+      ]
+    }
+  },
+  {
+    type: 'regulatory',
+    content: "Regulatory developments in the EU suggest increased scrutiny of meme tokens. To mitigate regulatory risk, consider reducing your meme token exposure and increasing allocation to compliant assets.",
+    action: {
+      type: 'protection',
+      description: 'Reduce regulatory risk exposure',
+      changes: [
+        { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 },
+        { category: 'rwa', name: 'RWA', from: 15, to: 20 }
+      ]
+    }
+  },
+  {
+    type: 'yield',
+    content: "Yield analysis shows SMR staking returns have increased to 9.3% APY following the latest protocol upgrade. Consider increasing your Layer 1 allocation to capture these enhanced staking rewards.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase Layer 1 allocation for higher staking yields',
+      changes: [
+        { category: 'l1', name: 'Layer 1', from: 15, to: 20 },
+        { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 0 }
+      ]
+    }
+  },
+  {
+    type: 'innovation',
+    content: "The AI token sector is experiencing accelerated innovation with DEEP launching a new neural network marketplace. Early adopters could benefit from significant growth. Consider increasing your AI allocation.",
+    action: {
+      type: 'rebalance',
+      description: 'Increase AI allocation to capture innovation growth',
+      changes: [
+        { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
+        { category: 'defi', name: 'DeFi', from: 15, to: 10 }
       ]
     }
   }
@@ -167,20 +296,59 @@ const AIChat = () => {
 
   // Check if Gemini API is available
   useEffect(() => {
-    setIsGeminiEnabled(isGeminiAvailable());
+    const checkGeminiAvailability = async () => {
+      try {
+        const available = await isGeminiAvailable();
+        setIsGeminiEnabled(available);
+      } catch (error) {
+        console.error('Error checking Gemini availability:', error);
+        setIsGeminiEnabled(false);
+      }
+    };
+    
+    checkGeminiAvailability();
   }, []);
+  
+  // Helper function to adapt AI suggestions to current portfolio allocations
+  const adaptSuggestionToCurrentAllocations = useCallback((suggestion: any) => {
+    if (!suggestion.action?.changes || !allocations.length) return suggestion;
+    
+    const currentAllocationMap = Object.fromEntries(
+      allocations.map(a => [a.id, a.allocation])
+    );
+    
+    // Create a deep copy of the suggestion
+    const adaptedSuggestion = JSON.parse(JSON.stringify(suggestion));
+    
+    // Adapt the changes to current allocations
+    adaptedSuggestion.action.changes = adaptedSuggestion.action.changes.map((change: any) => {
+      const currentValue = currentAllocationMap[change.category] || change.from;
+      const difference = change.to - change.from; // Original intended change
+      
+      return {
+        ...change,
+        from: currentValue,
+        to: Math.max(0, Math.min(100, currentValue + difference)) // Ensure values are between 0-100
+      };
+    });
+    
+    return adaptedSuggestion;
+  }, [allocations]);
   
   const triggerAIInsight = (insight: any) => {
     setIsTyping(true);
+    
+    // Adapt the insight to current allocations
+    const adaptedInsight = adaptSuggestionToCurrentAllocations(insight);
     
     // Simulate AI working on analysis
     setTimeout(() => {
       const aiMessage: ChatMessage = {
         id: Date.now().toString(),
         sender: 'ai',
-        content: `📊 **AI Market Intelligence Alert**\n\n${insight.content}`,
+        content: `📊 **AI Market Intelligence Alert**\n\n${adaptedInsight.content}`,
         timestamp: new Date(),
-        action: insight.action
+        action: adaptedInsight.action
       };
       
       setMessages(prev => [...prev, aiMessage]);
@@ -192,6 +360,38 @@ const AIChat = () => {
         description: "Portfolio analysis has discovered a new opportunity",
       });
     }, 1000);
+  };
+  
+  // Function to get a random rule-based response when Gemini fails
+  const getRandomRuleBasedResponse = (userMessage: string) => {
+    // Analyze the user message for keywords to provide more relevant responses
+    const lowerCaseMsg = userMessage.toLowerCase();
+    
+    // Check for specific topics in the user message
+    if (lowerCaseMsg.includes('bitcoin') || lowerCaseMsg.includes('btc')) {
+      return marketInsights.find(insight => insight.type === 'bigcap') || marketInsights[8];
+    } else if (lowerCaseMsg.includes('ai') || lowerCaseMsg.includes('artificial intelligence')) {
+      return marketInsights.find(insight => insight.type === 'innovation') || marketInsights[14];
+    } else if (lowerCaseMsg.includes('defi') || lowerCaseMsg.includes('yield')) {
+      return marketInsights.find(insight => insight.type === 'yield') || marketInsights[5];
+    } else if (lowerCaseMsg.includes('risk') || lowerCaseMsg.includes('safe')) {
+      return marketInsights.find(insight => insight.type === 'security') || marketInsights[11];
+    } else if (lowerCaseMsg.includes('meme') || lowerCaseMsg.includes('nft')) {
+      return marketInsights.find(insight => insight.type === 'risk') || marketInsights[4];
+    } else if (lowerCaseMsg.includes('layer 1') || lowerCaseMsg.includes('l1') || lowerCaseMsg.includes('blockchain')) {
+      return marketInsights.find(insight => insight.type === 'layer1') || marketInsights[6];
+    } else if (lowerCaseMsg.includes('stable') || lowerCaseMsg.includes('usdt') || lowerCaseMsg.includes('usdc')) {
+      return marketInsights.find(insight => insight.type === 'stablecoin') || marketInsights[9];
+    } else if (lowerCaseMsg.includes('rwa') || lowerCaseMsg.includes('real world')) {
+      return marketInsights.find(insight => insight.type === 'rwa') || marketInsights[7];
+    }     else if (lowerCaseMsg.includes('rebalance') || lowerCaseMsg.includes('portfolio')) {
+      return marketInsights.find(insight => insight.type === 'balanced') || marketInsights[10];
+    } else if (lowerCaseMsg.includes('regulation') || lowerCaseMsg.includes('compliance')) {
+      return marketInsights.find(insight => insight.type === 'regulatory') || marketInsights[12];
+    }
+    
+    // If no specific topic is detected, return a random insight
+    return marketInsights[Math.floor(Math.random() * marketInsights.length)];
   };
   
   const handleSendMessage = async () => {
@@ -258,12 +458,31 @@ const AIChat = () => {
         // Generate response using Gemini
         const { content, action } = await generateChatResponse(message, recentMessages);
         
+        // If action contains changes, adapt them to current allocations
+        let adaptedAction = action;
+        if (action?.changes) {
+          adaptedAction = {
+            ...action,
+            changes: action.changes.map((change: any) => {
+              const currentAllocation = allocations.find(a => a.id === change.category);
+              const currentValue = currentAllocation ? currentAllocation.allocation : change.from;
+              const difference = change.to - change.from; // Original intended change
+              
+              return {
+                ...change,
+                from: currentValue,
+                to: Math.max(0, Math.min(100, currentValue + difference)) // Ensure values are between 0-100
+              };
+            })
+          };
+        }
+        
         const aiResponse: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
           content: content,
           timestamp: new Date(),
-          action: action
+          action: adaptedAction
         };
         
         setMessages(prev => [...prev, aiResponse]);
@@ -280,85 +499,40 @@ const AIChat = () => {
             : "There was a problem with the Gemini API. Using fallback responses.",
           variant: "destructive"
         });
-        // Fall back to pattern matching
+        
+        // Fall back to rule-based responses
+        const ruleBasedResponse = getRandomRuleBasedResponse(message);
+        const adaptedResponse = adaptSuggestionToCurrentAllocations(ruleBasedResponse);
+        
+        setTimeout(() => {
+          const aiResponse: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            content: `Based on your query, I've analyzed the current market conditions:\n\n${adaptedResponse.content}`,
+            timestamp: new Date(),
+            action: adaptedResponse.action
+          };
+          
+          setMessages(prev => [...prev, aiResponse]);
+          setIsTyping(false);
+        }, 1500);
+        
+        return;
       }
     }
     
-    // Fallback to pattern matching (existing code)
+    // Fallback to rule-based responses if Gemini is not enabled
     setTimeout(() => {
-      let aiResponse: ChatMessage;
+      const ruleBasedResponse = getRandomRuleBasedResponse(message);
+      const adaptedResponse = adaptSuggestionToCurrentAllocations(ruleBasedResponse);
       
-      // Pattern matching for demo purposes
-      if (message.toLowerCase().includes('rebalance') || message.toLowerCase().includes('portfolio')) {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: 'Based on current market conditions and on-chain data, I recommend the following portfolio adjustments:\n\n• Increase AI tokens allocation by 5% (focusing on DEEP)\n• Reduce meme token exposure by 3%\n• Add 2% to Layer 1 protocols (SMR showing strong fundamentals)\n• Maintain current stablecoin reserves as market volatility index is elevated\n\nThis rebalancing would optimize your risk-adjusted returns based on the latest market trends.',
-          timestamp: new Date(),
-          action: {
-            type: 'rebalance',
-            description: 'Apply recommended portfolio rebalance',
-            changes: [
-              { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
-              { category: 'meme', name: 'Meme & NFT', from: 10, to: 7 },
-              { category: 'l1', name: 'Layer 1', from: 15, to: 17 },
-              { category: 'defi', name: 'DeFi', from: 15, to: 11 }
-            ]
-          }
-        };
-      } else if (message.toLowerCase().includes('trend') || message.toLowerCase().includes('market')) {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: 'Latest market analysis reveals several key trends:\n\n1. AI tokens showing strong momentum with institutional inflows\n2. HODLHamster (meme) has surged 78.3% with abnormal social volume\n3. Layer 1 protocols experiencing renewed interest with SMR leading at +7.5%\n4. DeFi sector stabilizing with positive yield trends\n\nWhale addresses are accumulating DEEP and SMR according to on-chain data, suggesting potential continued upside.',
-          timestamp: new Date(),
-          action: {
-            type: 'analysis',
-            description: 'View Detailed Market Analysis'
-          }
-        };
-      } else if (message.toLowerCase().includes('ai') || message.toLowerCase().includes('deep')) {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: 'DEEP is showing strong fundamentals with several bullish indicators:\n\n• Developer activity up 34% month-over-month\n• New partnership with major AI research firm announced\n• Social sentiment analysis highly positive (89/100)\n• Technical indicators: MACD bullish crossover, RSI at 62\n\nBased on quantitative analysis, DEEP has a 73% probability of outperforming the broader market in the coming month. Consider increasing your allocation.',
-          timestamp: new Date(),
-          action: {
-            type: 'trade',
-            description: 'Increase DEEP allocation',
-            changes: [
-              { category: 'ai', name: 'AI & DeFi', from: 15, to: 20 },
-              { category: 'meme', name: 'Meme & NFT', from: 10, to: 5 }
-            ]
-          }
-        };
-      } else if (message.toLowerCase().includes('meme') || message.toLowerCase().includes('risk')) {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: 'Risk assessment for meme token category:\n\nYour current allocation (22%) exceeds our recommended threshold of 15% for speculative assets. While HODLHamster and PUNK show strong momentum, the sector volatility is 3.2x higher than other categories.\n\nSuggestion: Consider taking profits on BEAST token which shows distribution patterns from early investors and potential technical weakness.',
-          timestamp: new Date(),
-          action: {
-            type: 'protection',
-            description: 'Reduce meme token risk',
-            changes: [
-              { category: 'meme', name: 'Meme & NFT', from: 22, to: 15 },
-              { category: 'bigcap', name: 'Big Cap', from: 25, to: 28 },
-              { category: 'stablecoin', name: 'Stablecoins', from: 5, to: 9 }
-            ]
-          }
-        };
-      } else {
-        // Get random insight for other queries
-        const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: `Based on your query, I've analyzed the current market conditions and found this insight:\n\n${randomInsight.content}`,
-          timestamp: new Date(),
-          action: randomInsight.action
-        };
-      }
+      const aiResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        content: `Based on your query, I've analyzed the current market conditions:\n\n${adaptedResponse.content}`,
+        timestamp: new Date(),
+        action: adaptedResponse.action
+      };
       
       setMessages(prev => [...prev, aiResponse]);
       setIsTyping(false);
@@ -406,7 +580,8 @@ const AIChat = () => {
       // If it's a market analysis action, send another insight after a delay
       setTimeout(() => {
         const randomInsight = marketInsights[Math.floor(Math.random() * marketInsights.length)];
-        triggerAIInsight(randomInsight);
+        const adaptedInsight = adaptSuggestionToCurrentAllocations(randomInsight);
+        triggerAIInsight(adaptedInsight);
       }, 4000);
     } else {
       toast({
@@ -455,6 +630,7 @@ const AIChat = () => {
                         {msg.action.type === 'rebalance' ? <BarChart2 className="mr-1 h-3 w-3" /> : 
                          msg.action.type === 'analysis' ? <Search className="mr-1 h-3 w-3" /> :
                          msg.action.type === 'trade' ? <TrendingUp className="mr-1 h-3 w-3" /> :
+                         msg.action.type === 'protection' ? <Shield className="mr-1 h-3 w-3" /> :
                          <ArrowRight className="mr-1 h-3 w-3" />}
                         {msg.action.description}
                       </Button>

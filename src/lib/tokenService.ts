@@ -44,15 +44,6 @@ export const fetchTokenPrices = async (specificTokens?: string[]): Promise<Token
   } catch (error) {
     console.error('Error fetching token prices:', error);
     
-    // Only show toast if not fetching specific tokens (to avoid UI noise)
-    // if (!specificTokens) {
-    //   toast({
-    //     title: 'Error fetching token prices',
-    //     description: 'Could not retrieve the latest token data. Using cached data instead.',
-    //     variant: 'destructive',
-    //   });
-    // }
-    
     // Return empty array if fetch fails
     return [];
   }
