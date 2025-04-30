@@ -1,36 +1,54 @@
-# AToIoTA - AI-powered DeFi Investment Portfolio Navigator
+# AToIoTA: AI-Powered DeFi Portfolio Navigator for IOTA
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build](https://img.shields.io/badge/build-Vite%2BReact-blue)](https://vitejs.dev/)
 
 ## Overview
 
-AToIoTA is an AI-powered DeFi investment portfolio navigator specifically designed for the IOTA EVM network. It helps users optimize their cryptocurrency investments through intelligent portfolio management, yield comparisons, and performance tracking.
+AToIoTA is an advanced DeFi investment portfolio navigator for the IOTA EVM network, leveraging state-of-the-art artificial intelligence to transform how users interact with decentralized finance. The platform combines intelligent portfolio management, real-time market analysis, and on-chain insights, all powered by a hybrid AI system.
 
-## Features
+## Key Features
 
-- **Portfolio Overview**: Track your entire IOTA EVM investment portfolio in one place
-- **Performance Charts**: Visualize your investment performance over time
-- **Yield Comparison**: Compare yields across different DeFi protocols
-- **Token Management**: View and manage all your tokens in a comprehensive table
-- **AI-Powered Insights**: Get intelligent investment recommendations
-- **Persistent Chat**: AI chat history is saved across browser sessions using localStorage
-- **Real-Time Token Prices**: Integration with CoinGecko API for up-to-date market data
-- **Gemini AI Integration**: Advanced token insights powered by Google's Gemini AI
+- **AI-Powered Portfolio Optimization**: Receive allocation suggestions based on market conditions, risk tolerance, and historical performance.
+- **Natural Language Interface**: Conversational AI understands complex financial queries and provides actionable insights.
+- **On-Chain Analysis**: Monitor whale transactions and market movements with predictive analytics.
+- **Market Intelligence**: Analyze trends, token fundamentals, and trading opportunities using AI.
+- **Yield Comparison**: Compare DeFi protocol yields and optimize returns.
+- **Performance Tracking**: Visualize portfolio performance with custom charts.
+- **Token Management**: Manage all IOTA EVM tokens in a unified dashboard.
+- **Persistent AI Chat**: AI chat history is saved across sessions for seamless experience.
+- **Real-Time Data**: Integrates IOTA Explorer and CoinGecko APIs for up-to-date blockchain and market data.
 
-## Tech Stack
+## AI System Architecture
 
-- **Frontend**: React with TypeScript
-- **UI Framework**: Tailwind CSS with Shadcn UI components
+AToIoTA’s AI system uses a multi-layered approach:
+- **Large Language Models (LLMs)**: Google Gemini 2.5 Pro for natural language understanding and generation, fine-tuned for DeFi and blockchain.
+- **Rule-Based Systems**: For financial safety, compliance, and fallback responses.
+- **Pattern Recognition**: Identifies market trends and transaction patterns.
+- **On-Chain Data Analysis**: Provides blockchain intelligence and whale monitoring.
+
+### Data Sources
+- **On-Chain Data**: IOTA Explorer API, smart contract events, token transfers, whale movements, protocol metrics.
+- **Market Data**: CoinGecko API for token prices, market caps, liquidity, and sentiment indicators.
+- **Privacy**: Only public blockchain data is used; user portfolio data is processed locally when possible.
+
+### Prompt Engineering
+- Dynamic, context-aware prompts for financial and blockchain analysis.
+- Structured, specific, and responsible prompt design for reliable AI outputs.
+
+## Technical Stack
+
+- **Frontend**: React (TypeScript)
+- **UI**: Tailwind CSS, Shadcn UI
 - **State Management**: React Query
-- **Visualization**: Custom charts for portfolio performance
+- **Visualization**: Custom chart components
+- **Build Tool**: Vite
 
 ## Getting Started
 
-Follow these steps to set up the project locally:
-
 ```sh
 # Clone the repository
-git clone <YOUR_REPOSITORY_URL>
-
-# Navigate to the project directory
+git clone https://github.com/johnnyduo/AToIoTA.git
 cd atoiota
 
 # Install dependencies
@@ -44,53 +62,44 @@ cp .env.example .env
 npm run dev
 ```
 
-### Environment Setup
+### Environment Variables
 
-The application uses environment variables for API keys and configuration. Create or modify the `.env` file in the project root with the following variables:
-
+Create a `.env` file in the project root with:
 ```
-# Gemini API Key for token price data
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
-
-# CoinGecko API URL (free tier)
 VITE_COINGECKO_API_URL=https://api.coingecko.com/api/v3
 ```
 
-### Gemini API Key
-To use the Gemini AI for token insights:
+#### Gemini API Key
 1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key and paste it in the `.env` file as the value for `VITE_GEMINI_API_KEY`
+2. Generate an API key
+3. Add it to your `.env` file as `VITE_GEMINI_API_KEY`
 
 ## Development
 
-This project uses Vite as its build tool. Here are some useful commands:
-
 ```sh
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run preview   # Preview production build
+npm run lint      # Lint code
 ```
 
 ## Deployment
 
-To deploy this application:
-
 1. Build the project: `npm run build`
-2. Deploy the contents of the `dist` directory to your hosting provider
+2. Deploy the `dist` directory to your hosting provider
+
+## Usage Guidelines & Disclaimer
+
+- Use AI insights as one of many research tools; always verify information from multiple sources.
+- The AI provides analysis and suggestions, not professional financial advice.
+- Cryptocurrency investments carry significant risks; past performance is not indicative of future results.
+- No personally identifiable information is stored or processed.
 
 ## License
 
-[Include your license information here]
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Contact
 
-[Include your contact information here]
+For questions, feedback, or contributions, please open an issue or contact the maintainer via [GitHub Issues](https://github.com/johnnyduo/AToIoTA/issues).
