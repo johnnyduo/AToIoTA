@@ -31,7 +31,7 @@ export const iotaTestnet = {
 };
 
 // Project ID for WalletConnect
-export const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '3a2e2d5e88adc8d9faad6fc06e36e1a9';
+export const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '09fc7dba755d62670df0095c041ed441';
 
 // Define networks
 const networks = [iotaTestnet];
