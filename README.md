@@ -114,11 +114,11 @@ Try AToIoTA: [https://atoiota.xyz](https://atoiota.xyz)
 
 ## Team
 
-AToIoTA was created by [Team Name] for the IOTA EVM Hackathon 2023.
+AToIoTA was created by for the IOTA Moveathon  2025.
 
-## Hackathon
+## Moveathon 2025
 
-This project was developed for the IOTA EVM Hackathon 2023 under the DeFAI (DeFi + AI Integration) track.
+This project was developed for the IOTA Moveathon 2025 under the DeFAI (DeFi + AI Integration) track.
 
 ## Usage
 
@@ -131,10 +131,29 @@ For a detailed walkthrough, see our [User Guide](link-to-guide).
 
 ## Roadmap
 
-- Q1 2024: Mobile application development
-- Q2 2024: Additional DeFi protocol integrations
-- Q3-Q4 2024: Mainnet deployment and multi-chain expansion
-- 2025: DAO governance implementation and ecosystem expansion
+- Q2 2025: 
+MVP development
+AI integration with Gemini 2.5 Pro
+IOTA EVM testnet deployment
+Initial user testing
+
+- Q3 2025: 
+ElizaOS Plugin Hybrid
+Enhanced data visualization
+Additional DeFi protocol integrations
+Advanced whale tracking features
+
+- Q4 2025: 
+Mainnet deployment
+Multi-chain expansion (Cross-chain)
+Institutional-grade features
+Advanced predictive analytics
+
+- 2026: 
+DAO governance implementation
+Ecosystem of financial AI tools
+Global expansion and localization
+Integration with traditional finance systems
 
 ## Acknowledgments
 
