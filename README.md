@@ -113,7 +113,7 @@ Try AToIoTA: [https://atoiota.xyz](https://atoiota.xyz)
 
 ## Team
 
-AToIoTA was created by for the IOTA Moveathon  2025.
+AToIoTA was created for the IOTA Moveathon 2025.
 
 ## Moveathon 2025
 
