@@ -1,8 +1,8 @@
 // src/lib/appkit.ts
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { createAppKit } from '@reown/appkit/react'
 import { createConfig, http } from 'wagmi'
 import { injected, walletConnect } from 'wagmi/connectors'
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 
 // Define IOTA EVM Testnet
 export const iotaTestnet = {
@@ -30,106 +30,56 @@ export const iotaTestnet = {
   },
 };
 
-// IMPORTANT: Replace this with your actual WalletConnect project ID
-export const projectId = '09fc7dba755d62670df0095c041ed441';
+// Project ID
+const projectId = '09fc7dba755d62670df0095c041ed441'
 
-// Define networks
-const networks = [iotaTestnet];
-
-// Create a singleton pattern for the config and adapter
-let _wagmiConfig = null;
-let _wagmiAdapter = null;
-let _modal = null;
+// Networks
+const networks = [iotaTestnet]
 
 // Create wagmi config
-export const wagmiConfig = typeof window !== 'undefined' 
-  ? (() => {
-      if (_wagmiConfig) {
-        return _wagmiConfig;
-      }
-      
-      try {
-        console.log('Creating wagmi config');
-        _wagmiConfig = createConfig({
-          chains: networks,
-          transports: {
-            [iotaTestnet.id]: http('https://json-rpc.evm.testnet.iotaledger.net'),
-          },
-          connectors: [
-            injected({
-              shimDisconnect: true,
-            }),
-            walletConnect({
-              projectId,
-              showQrModal: true,
-              // No exclusions - allow all wallets
-            }),
-          ],
-          autoConnect: true
-        });
-        return _wagmiConfig;
-      } catch (error) {
-        console.error('Error creating wagmi config:', error);
-        return null;
-      }
-    })()
-  : null;
+export const wagmiConfig = createConfig({
+  chains: networks,
+  transports: {
+    [iotaTestnet.id]: http('https://json-rpc.evm.testnet.iotaledger.net'),
+  },
+  connectors: [
+    injected({
+      shimDisconnect: true,
+    }),
+    walletConnect({
+      projectId,
+    }),
+  ],
+  autoConnect: true
+});
 
-// Setup wagmi adapter
-export const wagmiAdapter = typeof window !== 'undefined' && wagmiConfig
-  ? (() => {
-      if (_wagmiAdapter) {
-        return _wagmiAdapter;
-      }
-      
-      try {
-        console.log('Creating wagmi adapter');
-        _wagmiAdapter = new WagmiAdapter({
-          networks,
-          projectId,
-          wagmiConfig,
-          autoConnect: true
-        });
-        return _wagmiAdapter;
-      } catch (error) {
-        console.error('Error creating wagmi adapter:', error);
-        return null;
-      }
-    })()
-  : null;
+// Create Wagmi Adapter
+export const wagmiAdapter = new WagmiAdapter({
+  networks,
+  projectId,
+  wagmiConfig,
+  autoConnect: true
+});
 
-// Create the AppKit instance
-export const modal = typeof window !== 'undefined' && wagmiAdapter
-  ? (() => {
-      if (_modal) {
-        return _modal;
-      }
-      
-      try {
-        console.log('Creating AppKit modal');
-        
-        _modal = createAppKit({
-          adapters: [wagmiAdapter],
-          networks,
-          metadata: {
-            name: 'AToIoTA',
-            description: 'AI-Powered Portfolio Allocation',
-            url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz',
-          },
-          projectId,
-          themeMode: 'dark',
-          themeVariables: {
-            '--w3m-accent': '#8B5CF6',
-          }
-        });
-        
-        return _modal;
-      } catch (error) {
-        console.error('Error creating AppKit modal:', error);
-        return null;
-      }
-    })()
-  : null;
+// Create modal
+export const modal = createAppKit({
+  adapters: [wagmiAdapter],
+  networks,
+  projectId,
+  metadata: {
+    name: 'AToIoTA',
+    description: 'AI-Powered Portfolio Allocation',
+    url: 'https://atoiota.xyz',
+    icons: ['https://img.icons8.com/3d-fluency/94/globe-africa.png']
+  },
+  themeMode: 'dark',
+  themeVariables: {
+    '--w3m-accent': '#8B5CF6',
+  },
+  features: {
+    analytics: true
+  }
+});
 
 // Re-export hooks from @reown/appkit/react
 export {
