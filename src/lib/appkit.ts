@@ -74,7 +74,7 @@ const modal = createAppKit({
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
-    url: import.meta.env.PROD ? 'https://atoiota.xyz' : window.location.origin,
+    url: import.meta.env.PROD ? (import.meta.env.VITE_USE_VERCEL ? 'https://atoiota.vercel.app' : 'https://atoiota.xyz') : window.location.origin,
     icons: [import.meta.env.PROD ? 'https://img.icons8.com/3d-fluency/94/globe-africa.png' : 'https://img.icons8.com/3d-fluency/94/globe-africa.png']
   },
   projectId,
