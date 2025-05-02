@@ -54,26 +54,27 @@ export function WalletConnect() {
     }
   }, [error]);
 
-  // Direct connect using the injected connector (MetaMask)
+  // Direct connect using available connectors
   const handleDirectConnect = async () => {
     try {
       console.log('Attempting direct connection');
       directConnectAttempted.current = true;
       
-      // Find the injected connector (MetaMask)
-      const injectedConnector = connectors.find(c => 
-        c.name === 'Injected' || c.id === 'injected' || c.name.includes('MetaMask')
-      );
-      
-      if (injectedConnector) {
-        console.log('Using injected connector:', injectedConnector.name);
-        await connectAsync({ connector: injectedConnector });
-        console.log('Direct connection successful');
-        return true;
-      } else if (connectors.length > 0) {
-        // Fallback to first available connector
-        console.log('Using first available connector:', connectors[0].name);
-        await connectAsync({ connector: connectors[0] });
+      if (connectors.length > 0) {
+        // Try to find injected connector (MetaMask) first as it's most common
+        const injectedConnector = connectors.find(c => 
+          c.name === 'Injected' || c.id === 'injected' || c.name.includes('MetaMask')
+        );
+        
+        if (injectedConnector) {
+          console.log('Using injected connector:', injectedConnector.name);
+          await connectAsync({ connector: injectedConnector });
+        } else {
+          // Fallback to first available connector
+          console.log('Using first available connector:', connectors[0].name);
+          await connectAsync({ connector: connectors[0] });
+        }
+        
         console.log('Direct connection successful');
         return true;
       } else {
@@ -108,9 +109,6 @@ export function WalletConnect() {
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
         localStorage.removeItem('wagmi.store');
-        
-        // Don't clear WalletConnect-specific items as this can cause initialization issues
-        // Instead, we'll rely on the disconnect() function to handle this properly
       }
       
       toast.success("Disconnected", "Your wallet has been disconnected successfully.");

@@ -62,10 +62,7 @@ export const wagmiConfig = typeof window !== 'undefined'
             walletConnect({
               projectId,
               showQrModal: true,
-              // Exclude problematic wallets
-              excludeWalletIds: [
-                'coinbaseWallet', // Exclude Coinbase Wallet if causing issues
-              ]
+              // No exclusions - allow all wallets
             }),
           ],
           autoConnect: true
