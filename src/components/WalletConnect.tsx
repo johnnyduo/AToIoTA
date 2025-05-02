@@ -23,11 +23,6 @@ export function WalletConnect() {
 
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  
-  // Safe way to check if we're in development mode
-  const isDevelopment = typeof window !== 'undefined' ? 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') : 
-    false;
 
   // Switch to IOTA testnet if connected to wrong network
   useEffect(() => {
@@ -57,8 +52,6 @@ export function WalletConnect() {
     setIsDropdownOpen(false);
     
     try {
-      console.log("Disconnecting wallet...");
-      
       // Call the disconnect function
       await disconnect();
       
@@ -70,42 +63,9 @@ export function WalletConnect() {
       }
       
       toast.success("Disconnected", "Your wallet has been disconnected successfully.");
-      
-      // In development mode, do additional cleanup and force reload
-      if (isDevelopment) {
-        console.log("Development environment detected, performing additional cleanup");
-        
-        // Clear all wallet-related localStorage items in development
-        if (typeof window !== 'undefined') {
-          Object.keys(localStorage).forEach(key => {
-            if (key.includes('wallet') || 
-                key.includes('wagmi') || 
-                key.includes('connect') || 
-                key.includes('reown')) {
-              localStorage.removeItem(key);
-            }
-          });
-          
-          // Force reload in development
-          window.location.reload();
-        }
-      }
     } catch (error) {
       console.error('Disconnect error:', error);
       toast.error('Disconnect Error', 'Failed to disconnect wallet.');
-      
-      // In development, force cleanup and reload even if disconnect fails
-      if (isDevelopment && typeof window !== 'undefined') {
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('wallet') || 
-              key.includes('wagmi') || 
-              key.includes('connect') || 
-              key.includes('reown')) {
-            localStorage.removeItem(key);
-          }
-        });
-        window.location.reload();
-      }
     } finally {
       setIsDisconnecting(false);
     }
@@ -131,6 +91,9 @@ export function WalletConnect() {
   // Function to handle wallet connection
   const handleConnect = () => {
     try {
+      console.log('Attempting to connect wallet');
+      console.log('Modal available:', !!modal);
+      
       if (modal) {
         modal.open();
       } else {
@@ -189,23 +152,6 @@ export function WalletConnect() {
               </>
             )}
           </DropdownMenuItem>
-          
-          {/* Development-only force disconnect option */}
-          {isDevelopment && (
-            <DropdownMenuItem 
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  window.location.reload();
-                }
-              }} 
-              className="cursor-pointer text-destructive"
-            >
-              <span className="mr-2">⚠️</span>
-              Dev: Force Disconnect
-            </DropdownMenuItem>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     )

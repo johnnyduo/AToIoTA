@@ -54,6 +54,7 @@ export const wagmiConfig = typeof window !== 'undefined'
           projectId,
         }),
       ],
+      // Always enable auto-connect in production
       autoConnect: true
     })
   : null;
@@ -64,31 +65,35 @@ export const wagmiAdapter = typeof window !== 'undefined' && wagmiConfig
       networks,
       projectId,
       wagmiConfig,
+      // Always enable auto-connect in production
       autoConnect: true
     })
   : null;
 
 // Create the AppKit instance immediately if we're in a browser environment
 export const modal = typeof window !== 'undefined' && wagmiAdapter
-  ? createAppKit({
-      adapters: [wagmiAdapter],
-      networks,
-      metadata: {
-        name: 'AToIoTA',
-        description: 'AI-Powered Portfolio Allocation',
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz',
-        // Remove the custom icon - this will use the default icon
-        icons: []
-      },
-      projectId,
-      themeMode: 'dark',
-      themeVariables: {
-        '--w3m-accent': '#8B5CF6',
-      },
-      features: {
-        analytics: true
+  ? (() => {
+      try {
+        // Simple metadata with no icons
+        return createAppKit({
+          adapters: [wagmiAdapter],
+          networks,
+          metadata: {
+            name: 'AToIoTA',
+            description: 'AI-Powered Portfolio Allocation',
+            url: 'https://atoiota.xyz', // Use primary domain as fallback
+          },
+          projectId,
+          themeMode: 'dark',
+          themeVariables: {
+            '--w3m-accent': '#8B5CF6',
+          }
+        });
+      } catch (error) {
+        console.error('Error creating AppKit modal:', error);
+        return null;
       }
-    })
+    })()
   : null;
 
 // Re-export hooks from @reown/appkit/react
