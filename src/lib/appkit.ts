@@ -77,7 +77,8 @@ export const modal = typeof window !== 'undefined' && wagmiAdapter
         name: 'AToIoTA',
         description: 'AI-Powered Portfolio Allocation',
         url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz',
-        icons: ['https://img.icons8.com/3d-fluency/94/globe-africa.png']
+        // Remove the custom icon - this will use the default icon
+        icons: []
       },
       projectId,
       themeMode: 'dark',
