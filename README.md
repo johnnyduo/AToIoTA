@@ -103,3 +103,41 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ## Contact
 
 For questions, feedback, or contributions, please open an issue or contact the maintainer via [GitHub Issues](https://github.com/johnnyduo/AToIoTA/issues).
+
+## Demo
+
+Try AToIoTA: [https://atoiota.xyz](https://atoiota.xyz)
+
+## Screenshots
+
+![AToIoTA Dashboard](path/to/screenshot.png)
+
+## Team
+
+AToIoTA was created by [Team Name] for the IOTA EVM Hackathon 2023.
+
+## Hackathon
+
+This project was developed for the IOTA EVM Hackathon 2023 under the DeFAI (DeFi + AI Integration) track.
+
+## Usage
+
+1. **Connect Wallet**: Click "Connect Wallet" to link your MetaMask or other Web3 wallet
+2. **Portfolio Management**: Adjust allocation sliders to rebalance your portfolio
+3. **AI Chat**: Ask financial questions in natural language
+4. **Whale Tracking**: Monitor significant market movements
+
+For a detailed walkthrough, see our [User Guide](link-to-guide).
+
+## Roadmap
+
+- Q1 2024: Mobile application development
+- Q2 2024: Additional DeFi protocol integrations
+- Q3-Q4 2024: Mainnet deployment and multi-chain expansion
+- 2025: DAO governance implementation and ecosystem expansion
+
+## Acknowledgments
+
+- IOTA Foundation for their support and documentation
+- Google for access to the Gemini 2.5 Pro API
+- The open-source community for the various libraries used in this project
