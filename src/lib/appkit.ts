@@ -67,14 +67,14 @@ export const wagmiAdapter = new WagmiAdapter({
   autoConnect: !isDevelopment
 })
 
-// Create AppKit modal instance
+// Update the metadata.url to dynamically match the actual page URL
 const modal = createAppKit({
   adapters: [wagmiAdapter],
   networks,
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
-    url: import.meta.env.PROD ? (import.meta.env.VITE_USE_VERCEL ? 'https://atoiota.vercel.app' : 'https://atoiota.xyz') : window.location.origin,
+    url: window.location.origin, // Dynamically use the current page URL
     icons: [import.meta.env.PROD ? 'https://img.icons8.com/3d-fluency/94/globe-africa.png' : 'https://img.icons8.com/3d-fluency/94/globe-africa.png']
   },
   projectId,
