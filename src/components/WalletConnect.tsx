@@ -1,6 +1,6 @@
 // src/components/WalletConnect.tsx
 import { useAccount, useChainId, useConnect } from 'wagmi'
-import { iotaTestnet, useAppKit, useDisconnect } from '@/lib/appkit'
+import { iotaTestnet, modal, useDisconnect } from '@/lib/appkit'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
@@ -20,14 +20,14 @@ export function WalletConnect() {
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
   const { connectAsync } = useConnect()
-  const appKit = useAppKit()
 
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   
-  // Check if we're in development mode
-  const isDevelopment = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1';
+  // Safe way to check if we're in development mode
+  const isDevelopment = typeof window !== 'undefined' ? 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') : 
+    false;
 
   // Switch to IOTA testnet if connected to wrong network
   useEffect(() => {
@@ -63,9 +63,11 @@ export function WalletConnect() {
       await disconnect();
       
       // Clear specific localStorage items
-      localStorage.removeItem('wagmi.connected');
-      localStorage.removeItem('wagmi.wallet');
-      localStorage.removeItem('wagmi.store');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('wagmi.connected');
+        localStorage.removeItem('wagmi.wallet');
+        localStorage.removeItem('wagmi.store');
+      }
       
       toast.success("Disconnected", "Your wallet has been disconnected successfully.");
       
@@ -74,24 +76,26 @@ export function WalletConnect() {
         console.log("Development environment detected, performing additional cleanup");
         
         // Clear all wallet-related localStorage items in development
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('wallet') || 
-              key.includes('wagmi') || 
-              key.includes('connect') || 
-              key.includes('reown')) {
-            localStorage.removeItem(key);
-          }
-        });
-        
-        // Force reload in development
-        window.location.reload();
+        if (typeof window !== 'undefined') {
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes('wallet') || 
+                key.includes('wagmi') || 
+                key.includes('connect') || 
+                key.includes('reown')) {
+              localStorage.removeItem(key);
+            }
+          });
+          
+          // Force reload in development
+          window.location.reload();
+        }
       }
     } catch (error) {
       console.error('Disconnect error:', error);
       toast.error('Disconnect Error', 'Failed to disconnect wallet.');
       
       // In development, force cleanup and reload even if disconnect fails
-      if (isDevelopment) {
+      if (isDevelopment && typeof window !== 'undefined') {
         Object.keys(localStorage).forEach(key => {
           if (key.includes('wallet') || 
               key.includes('wagmi') || 
@@ -122,6 +126,21 @@ export function WalletConnect() {
   
   const getExplorerUrl = (address: string) => {
     return `https://explorer.evm.testnet.iotaledger.net/address/${address}`;
+  };
+
+  // Function to handle wallet connection
+  const handleConnect = () => {
+    try {
+      if (modal) {
+        modal.open();
+      } else {
+        console.error('Wallet modal is not available');
+        toast.error('Connection Error', 'Wallet connection is not available.');
+      }
+    } catch (error) {
+      console.error('Failed to open wallet modal:', error);
+      toast.error('Connection Error', 'Failed to open wallet connection modal.');
+    }
   };
 
   if (isConnected) {
@@ -175,9 +194,11 @@ export function WalletConnect() {
           {isDevelopment && (
             <DropdownMenuItem 
               onClick={() => {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.reload();
+                if (typeof window !== 'undefined') {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                }
               }} 
               className="cursor-pointer text-destructive"
             >
@@ -193,7 +214,7 @@ export function WalletConnect() {
   return (
     <Button 
       className="bg-gradient-button hover:opacity-90 font-medium"
-      onClick={() => appKit.open()}
+      onClick={handleConnect}
     >
       <Wallet className="mr-2 h-4 w-4" />
       Connect Wallet
