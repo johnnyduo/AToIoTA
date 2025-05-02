@@ -3,7 +3,7 @@ import { useAccount, useChainId, useConnect } from 'wagmi'
 import { iotaTestnet, modal, useDisconnect } from '@/lib/appkit'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Loader2, Wallet, ChevronDown } from 'lucide-react'
 import {
   DropdownMenu,
@@ -24,17 +24,9 @@ export function WalletConnect() {
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [modalFailed, setModalFailed] = useState(false)
-
-  // Add a check to ensure WalletConnect Core is not initialized multiple times
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.walletConnectInitialized) {
-      console.warn('WalletConnect Core is already initialized. Skipping initialization.');
-      return;
-    }
-
-    window.walletConnectInitialized = true;
-  }, []);
+  
+  // Use a ref to track if we've attempted a direct connection
+  const directConnectAttempted = useRef(false);
 
   // Log connection status for debugging
   useEffect(() => {
@@ -62,6 +54,39 @@ export function WalletConnect() {
     }
   }, [error]);
 
+  // Direct connect using the injected connector (MetaMask)
+  const handleDirectConnect = async () => {
+    try {
+      console.log('Attempting direct connection');
+      directConnectAttempted.current = true;
+      
+      // Find the injected connector (MetaMask)
+      const injectedConnector = connectors.find(c => 
+        c.name === 'Injected' || c.id === 'injected' || c.name.includes('MetaMask')
+      );
+      
+      if (injectedConnector) {
+        console.log('Using injected connector:', injectedConnector.name);
+        await connectAsync({ connector: injectedConnector });
+        console.log('Direct connection successful');
+        return true;
+      } else if (connectors.length > 0) {
+        // Fallback to first available connector
+        console.log('Using first available connector:', connectors[0].name);
+        await connectAsync({ connector: connectors[0] });
+        console.log('Direct connection successful');
+        return true;
+      } else {
+        console.error('No connectors available');
+        return false;
+      }
+    } catch (error) {
+      console.error('Direct connection error:', error);
+      return false;
+    }
+  };
+
+  // Safe disconnect that handles cleanup properly
   const handleDisconnect = async () => {
     if (isDisconnecting) return;
     
@@ -70,13 +95,22 @@ export function WalletConnect() {
     
     try {
       console.log("Disconnecting wallet...");
+      
+      // Call the disconnect function
       await disconnect();
       
-      // Clear localStorage items
+      // Reset our direct connect attempt tracker
+      directConnectAttempted.current = false;
+      
+      // Clear specific localStorage items
       if (typeof window !== 'undefined') {
+        // Clear only specific items to avoid breaking other functionality
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
         localStorage.removeItem('wagmi.store');
+        
+        // Don't clear WalletConnect-specific items as this can cause initialization issues
+        // Instead, we'll rely on the disconnect() function to handle this properly
       }
       
       toast.success("Disconnected", "Your wallet has been disconnected successfully.");
@@ -96,33 +130,13 @@ export function WalletConnect() {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success("Address Copied", "Your wallet has been copied to clipboard.");
+      toast.success("Address Copied", "Your wallet address has been copied to clipboard.");
       setIsDropdownOpen(false);
     }
   };
   
   const getExplorerUrl = (address: string) => {
     return `https://explorer.evm.testnet.iotaledger.net/address/${address}`;
-  };
-
-  // Direct connect fallback using the first available connector (usually MetaMask)
-  const handleDirectConnect = async () => {
-    try {
-      console.log('Attempting direct connection');
-      if (connectors.length > 0) {
-        const connector = connectors[0]; // Usually MetaMask/injected
-        console.log('Using connector:', connector.name);
-        await connectAsync({ connector });
-        console.log('Direct connection successful');
-        return true;
-      } else {
-        console.error('No connectors available');
-        return false;
-      }
-    } catch (error) {
-      console.error('Direct connection error:', error);
-      return false;
-    }
   };
 
   // Function to handle wallet connection
@@ -133,25 +147,9 @@ export function WalletConnect() {
     
     try {
       console.log('Attempting to connect wallet');
-      console.log('Modal available:', !!modal);
       
-      if (modal && !modalFailed) {
-        try {
-          console.log('Trying modal approach');
-          await modal.open();
-          console.log('Modal opened successfully');
-        } catch (modalError) {
-          console.error('Modal approach failed:', modalError);
-          setModalFailed(true);
-          
-          // Try direct connection as fallback
-          const directSuccess = await handleDirectConnect();
-          
-          if (!directSuccess) {
-            throw new Error('Both connection methods failed');
-          }
-        }
-      } else if (connectors.length > 0) {
+      // If we've already tried direct connect, or if modal isn't available, use direct connect
+      if (directConnectAttempted.current || !modal) {
         console.log('Using direct connection approach');
         const directSuccess = await handleDirectConnect();
         
@@ -159,8 +157,24 @@ export function WalletConnect() {
           throw new Error('Direct connection failed');
         }
       } else {
-        console.error('No connectors available');
-        throw new Error('No connectors available for wallet connection');
+        // Try modal approach first if available
+        try {
+          console.log('Modal available:', !!modal);
+          console.log('Trying modal approach');
+          
+          await modal.open();
+          console.log('Modal opened successfully');
+        } catch (modalError) {
+          console.error('Modal approach failed:', modalError);
+          
+          // Fall back to direct connection
+          console.log('Falling back to direct connection');
+          const directSuccess = await handleDirectConnect();
+          
+          if (!directSuccess) {
+            throw new Error('Both connection methods failed');
+          }
+        }
       }
     } catch (error) {
       console.error('Connection error:', error);
