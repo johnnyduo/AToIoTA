@@ -26,6 +26,16 @@ export function WalletConnect() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [modalFailed, setModalFailed] = useState(false)
 
+  // Add a check to ensure WalletConnect Core is not initialized multiple times
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.walletConnectInitialized) {
+      console.warn('WalletConnect Core is already initialized. Skipping initialization.');
+      return;
+    }
+
+    window.walletConnectInitialized = true;
+  }, []);
+
   // Log connection status for debugging
   useEffect(() => {
     console.log('Wallet connection status:', {
@@ -141,13 +151,16 @@ export function WalletConnect() {
             throw new Error('Both connection methods failed');
           }
         }
-      } else {
+      } else if (connectors.length > 0) {
         console.log('Using direct connection approach');
         const directSuccess = await handleDirectConnect();
         
         if (!directSuccess) {
           throw new Error('Direct connection failed');
         }
+      } else {
+        console.error('No connectors available');
+        throw new Error('No connectors available for wallet connection');
       }
     } catch (error) {
       console.error('Connection error:', error);
