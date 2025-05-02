@@ -1,10 +1,10 @@
 // src/components/WalletConnect.tsx
 import { useAccount, useChainId, useConnect } from 'wagmi'
-import { iotaTestnet, modal, useDisconnect, isWalletConnectionAvailable } from '@/lib/appkit'
+import { iotaTestnet, modal, useDisconnect } from '@/lib/appkit'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
-import { Loader2, Wallet, ChevronDown, AlertTriangle } from 'lucide-react'
+import { Loader2, Wallet, ChevronDown } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +19,23 @@ export function WalletConnect() {
   const { error } = useAccount()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
-  const { connectAsync } = useConnect()
+  const { connectAsync, connectors } = useConnect()
 
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [modalFailed, setModalFailed] = useState(false)
 
-  // Check if wallet connection is available
-  const walletConnectionAvailable = isWalletConnectionAvailable();
+  // Log connection status for debugging
+  useEffect(() => {
+    console.log('Wallet connection status:', {
+      isConnected,
+      address: address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : null,
+      chainId,
+      modalAvailable: !!modal,
+      availableConnectors: connectors.map(c => c.name)
+    });
+  }, [isConnected, address, chainId, connectors]);
 
   // Switch to IOTA testnet if connected to wrong network
   useEffect(() => {
@@ -39,30 +47,10 @@ export function WalletConnect() {
   // Handle connection errors
   useEffect(() => {
     if (error) {
-      setConnectionError(error.message || 'Failed to connect wallet');
+      console.error('Connection error:', error);
       toast.error('Connection Error', error.message || 'Failed to connect wallet');
-    } else {
-      setConnectionError(null);
     }
   }, [error]);
-
-  // Handle chain mismatch
-  useEffect(() => {
-    if (isConnected && chainId !== undefined && chainId !== iotaTestnet.id) {
-      toast('Wrong Network', 'Switching to IOTA Testnet...');
-    }
-  }, [chainId, isConnected])
-
-  // Log wallet connection status on mount
-  useEffect(() => {
-    console.log('WalletConnect component mounted', {
-      isConnected,
-      address,
-      chainId,
-      walletConnectionAvailable,
-      modalAvailable: !!modal
-    });
-  }, [isConnected, address, chainId, walletConnectionAvailable]);
 
   const handleDisconnect = async () => {
     if (isDisconnecting) return;
@@ -72,11 +60,9 @@ export function WalletConnect() {
     
     try {
       console.log("Disconnecting wallet...");
-      
-      // Call the disconnect function
       await disconnect();
       
-      // Clear specific localStorage items
+      // Clear localStorage items
       if (typeof window !== 'undefined') {
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
@@ -100,7 +86,7 @@ export function WalletConnect() {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success("Address Copied", "Your wallet address has been copied to clipboard.");
+      toast.success("Address Copied", "Your wallet has been copied to clipboard.");
       setIsDropdownOpen(false);
     }
   };
@@ -109,33 +95,63 @@ export function WalletConnect() {
     return `https://explorer.evm.testnet.iotaledger.net/address/${address}`;
   };
 
+  // Direct connect fallback using the first available connector (usually MetaMask)
+  const handleDirectConnect = async () => {
+    try {
+      console.log('Attempting direct connection');
+      if (connectors.length > 0) {
+        const connector = connectors[0]; // Usually MetaMask/injected
+        console.log('Using connector:', connector.name);
+        await connectAsync({ connector });
+        console.log('Direct connection successful');
+        return true;
+      } else {
+        console.error('No connectors available');
+        return false;
+      }
+    } catch (error) {
+      console.error('Direct connection error:', error);
+      return false;
+    }
+  };
+
   // Function to handle wallet connection
   const handleConnect = async () => {
     if (isConnecting) return;
     
     setIsConnecting(true);
-    setConnectionError(null);
     
     try {
       console.log('Attempting to connect wallet');
       console.log('Modal available:', !!modal);
       
-      if (modal) {
-        await modal.open();
-        console.log('Modal opened successfully');
+      if (modal && !modalFailed) {
+        try {
+          console.log('Trying modal approach');
+          await modal.open();
+          console.log('Modal opened successfully');
+        } catch (modalError) {
+          console.error('Modal approach failed:', modalError);
+          setModalFailed(true);
+          
+          // Try direct connection as fallback
+          const directSuccess = await handleDirectConnect();
+          
+          if (!directSuccess) {
+            throw new Error('Both connection methods failed');
+          }
+        }
       } else {
-        console.error('Wallet modal is not available');
+        console.log('Using direct connection approach');
+        const directSuccess = await handleDirectConnect();
         
-        // Try direct connection as fallback
-        console.log('Attempting direct connection as fallback');
-        await connectAsync();
-        
-        toast.success('Connected', 'Your wallet has been connected successfully.');
+        if (!directSuccess) {
+          throw new Error('Direct connection failed');
+        }
       }
-    } catch (error: any) {
-      console.error('Failed to open wallet modal:', error);
-      setConnectionError(error.message || 'Failed to open wallet connection modal.');
-      toast.error('Connection Error', error.message || 'Failed to open wallet connection modal.');
+    } catch (error) {
+      console.error('Connection error:', error);
+      toast.error('Connection Error', 'Failed to connect wallet. Please try again.');
     } finally {
       setIsConnecting(false);
     }
@@ -190,35 +206,6 @@ export function WalletConnect() {
         </DropdownMenuContent>
       </DropdownMenu>
     )
-  }
-  
-  // Show error state if wallet connection is not available
-  if (!walletConnectionAvailable && !connectionError) {
-    return (
-      <Button 
-        className="bg-amber-600 hover:bg-amber-700 font-medium"
-        onClick={() => window.location.reload()}
-      >
-        <AlertTriangle className="mr-2 h-4 w-4" />
-        Wallet Unavailable - Reload
-      </Button>
-    );
-  }
-  
-  // Show error state if there was a connection error
-  if (connectionError) {
-    return (
-      <Button 
-        className="bg-red-600 hover:bg-red-700 font-medium"
-        onClick={() => {
-          setConnectionError(null);
-          window.location.reload();
-        }}
-      >
-        <AlertTriangle className="mr-2 h-4 w-4" />
-        Connection Error - Reload
-      </Button>
-    );
   }
   
   return (
