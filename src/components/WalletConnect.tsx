@@ -1,10 +1,10 @@
 // src/components/WalletConnect.tsx
 import { useAccount, useChainId, useConnect } from 'wagmi'
-import { iotaTestnet, modal, useDisconnect } from '@/lib/appkit'
+import { iotaTestnet, modal, useDisconnect, isWalletConnectionAvailable } from '@/lib/appkit'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
-import { Loader2, Wallet, ChevronDown } from 'lucide-react'
+import { Loader2, Wallet, ChevronDown, AlertTriangle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,11 @@ export function WalletConnect() {
 
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  // Check if wallet connection is available
+  const walletConnectionAvailable = isWalletConnectionAvailable();
 
   // Switch to IOTA testnet if connected to wrong network
   useEffect(() => {
@@ -34,7 +39,10 @@ export function WalletConnect() {
   // Handle connection errors
   useEffect(() => {
     if (error) {
+      setConnectionError(error.message || 'Failed to connect wallet');
       toast.error('Connection Error', error.message || 'Failed to connect wallet');
+    } else {
+      setConnectionError(null);
     }
   }, [error]);
 
@@ -45,6 +53,17 @@ export function WalletConnect() {
     }
   }, [chainId, isConnected])
 
+  // Log wallet connection status on mount
+  useEffect(() => {
+    console.log('WalletConnect component mounted', {
+      isConnected,
+      address,
+      chainId,
+      walletConnectionAvailable,
+      modalAvailable: !!modal
+    });
+  }, [isConnected, address, chainId, walletConnectionAvailable]);
+
   const handleDisconnect = async () => {
     if (isDisconnecting) return;
     
@@ -52,6 +71,8 @@ export function WalletConnect() {
     setIsDropdownOpen(false);
     
     try {
+      console.log("Disconnecting wallet...");
+      
       // Call the disconnect function
       await disconnect();
       
@@ -89,20 +110,34 @@ export function WalletConnect() {
   };
 
   // Function to handle wallet connection
-  const handleConnect = () => {
+  const handleConnect = async () => {
+    if (isConnecting) return;
+    
+    setIsConnecting(true);
+    setConnectionError(null);
+    
     try {
       console.log('Attempting to connect wallet');
       console.log('Modal available:', !!modal);
       
       if (modal) {
-        modal.open();
+        await modal.open();
+        console.log('Modal opened successfully');
       } else {
         console.error('Wallet modal is not available');
-        toast.error('Connection Error', 'Wallet connection is not available.');
+        
+        // Try direct connection as fallback
+        console.log('Attempting direct connection as fallback');
+        await connectAsync();
+        
+        toast.success('Connected', 'Your wallet has been connected successfully.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to open wallet modal:', error);
-      toast.error('Connection Error', 'Failed to open wallet connection modal.');
+      setConnectionError(error.message || 'Failed to open wallet connection modal.');
+      toast.error('Connection Error', error.message || 'Failed to open wallet connection modal.');
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -157,13 +192,52 @@ export function WalletConnect() {
     )
   }
   
+  // Show error state if wallet connection is not available
+  if (!walletConnectionAvailable && !connectionError) {
+    return (
+      <Button 
+        className="bg-amber-600 hover:bg-amber-700 font-medium"
+        onClick={() => window.location.reload()}
+      >
+        <AlertTriangle className="mr-2 h-4 w-4" />
+        Wallet Unavailable - Reload
+      </Button>
+    );
+  }
+  
+  // Show error state if there was a connection error
+  if (connectionError) {
+    return (
+      <Button 
+        className="bg-red-600 hover:bg-red-700 font-medium"
+        onClick={() => {
+          setConnectionError(null);
+          window.location.reload();
+        }}
+      >
+        <AlertTriangle className="mr-2 h-4 w-4" />
+        Connection Error - Reload
+      </Button>
+    );
+  }
+  
   return (
     <Button 
       className="bg-gradient-button hover:opacity-90 font-medium"
       onClick={handleConnect}
+      disabled={isConnecting}
     >
-      <Wallet className="mr-2 h-4 w-4" />
-      Connect Wallet
+      {isConnecting ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Connecting...
+        </>
+      ) : (
+        <>
+          <Wallet className="mr-2 h-4 w-4" />
+          Connect Wallet
+        </>
+      )}
     </Button>
   )
 }
