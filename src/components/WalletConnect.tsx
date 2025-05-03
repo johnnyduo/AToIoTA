@@ -21,8 +21,18 @@ export function WalletConnect() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const handleConnect = () => {
-    console.log('Opening wallet modal');
-    modal.open();
+    try {
+      console.log('Opening wallet modal');
+      if (modal) {
+        modal.open();
+      } else {
+        console.error('Wallet modal is not available');
+        toast.error('Connection Error', 'Wallet connection is not available.');
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+      toast.error('Connection Error', 'Failed to connect wallet. Please try again.');
+    }
   };
 
   const handleDisconnect = async () => {
