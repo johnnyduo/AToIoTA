@@ -1,6 +1,6 @@
 // src/lib/contractService.ts
 import { useContractRead, useContractWrite, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { ethers } from 'ethers';
+import { ethers, BrowserProvider, Contract } from 'ethers'; // Import from ethers v6
 import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
 
 // Contract address from environment variable
@@ -35,7 +35,7 @@ export const categoryNames: Record<string, string> = {
   'stablecoin': 'Stablecoins',
 };
 
-// Direct contract interaction using ethers.js
+// Direct contract interaction using ethers.js v6
 export const updateAllocations = async (allocations: Allocation[]) => {
   if (!(window as any).ethereum) {
     throw new Error('No Ethereum provider found. Please install MetaMask or another wallet.');
@@ -47,15 +47,15 @@ export const updateAllocations = async (allocations: Allocation[]) => {
     // Request account access explicitly
     await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
     
-    // Get the provider and signer
-    const provider = new ethers.providers.Web3Provider((window as any).ethereum);
-    const signer = provider.getSigner();
+    // Get the provider and signer - ethers v6 syntax
+    const provider = new BrowserProvider((window as any).ethereum);
+    const signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
     
     console.log('Connected with address:', userAddress);
     
-    // Create contract instance
-    const contract = new ethers.Contract(
+    // Create contract instance - ethers v6 syntax
+    const contract = new Contract(
       PORTFOLIO_CONTRACT_ADDRESS,
       AutomatedPortfolioABI,
       signer
@@ -74,22 +74,22 @@ export const updateAllocations = async (allocations: Allocation[]) => {
     
     // Estimate gas first to check if the transaction will succeed
     try {
-      const gasEstimate = await contract.estimateGas.updateAllocations(categories, percentages);
+      const gasEstimate = await contract.updateAllocations.estimateGas(categories, percentages);
       console.log('Gas estimate:', gasEstimate.toString());
     } catch (gasError) {
       console.error('Gas estimation failed:', gasError);
       throw new Error(`Transaction would fail: ${gasError instanceof Error ? gasError.message : 'Unknown error'}`);
     }
     
-    // Call the contract function with explicit gas limit
+    // Call the contract function with explicit gas limit - ethers v6 syntax
     const tx = await contract.updateAllocations(categories, percentages, {
-      gasLimit: ethers.utils.hexlify(300000) // Set a reasonable gas limit
+      gasLimit: 300000 // ethers v6 accepts number directly
     });
     
     console.log('Transaction sent:', tx);
     
     return {
-      hash: tx.hash
+      hash: tx.hash as `0x${string}`
     };
   } catch (error) {
     console.error('Error in updateAllocations:', error);
@@ -178,7 +178,7 @@ export function useUpdateAllocations() {
 
   const { isPending, error, isSuccess, data, status } = contractWrite;
 
-  const updateAllocations = async (allocations: Allocation[]) => {
+  const updateAllocationsFn = async (allocations: Allocation[]) => {
     console.log('updateAllocations called with:', {
       allocations,
       isConnected,
@@ -236,7 +236,7 @@ export function useUpdateAllocations() {
   };
 
   return {
-    updateAllocations,
+    updateAllocations: updateAllocationsFn,
     isPending,
     error,
     isSuccess,
