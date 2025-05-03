@@ -84,15 +84,7 @@ const YieldComparison = () => {
             </ResponsiveContainer>
             
             <div className="flex justify-center mt-4">
-              <div className="bg-cosmic-800 rounded-md p-3 max-w-md text-center">
-                <p className="text-sm text-muted-foreground">
-                  Connect your wallet to compare your actual yield with AI-optimized strategies
-                </p>
-                <Button variant="outline" className="mt-3 bg-nebula-600/20 hover:bg-nebula-600/30">
-                  <WalletIcon className="h-4 w-4 mr-2" />
-                  Connect Wallet
-                </Button>
-              </div>
+              {/* Removed content */}
             </div>
           </div>
         ) : (

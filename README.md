@@ -89,6 +89,25 @@ npm run lint      # Lint code
 1. Build the project: `npm run build`
 2. Deploy the `dist` directory to your hosting provider
 
+## Smart Contract Deployment Attestation
+
+The portfolio allocation functionality is powered by a smart contract deployed on the IOTA EVM testnet. The contract address is specified in the `.env` file under the variable `VITE_CONTRACT_ADDRESS`.
+
+### Verify Deployment
+
+You can verify the deployment and interact with the contract on the IOTA testnet explorer:
+
+- **Contract Address**: `VITE_CONTRACT_ADDRESS`
+- **Explorer URL**: [IOTA Testnet Explorer](https://explorer.iota.org/testnet/evm)
+
+To view the contract details, replace `VITE_CONTRACT_ADDRESS` with the actual address from your `.env` file in the explorer URL.
+
+### Proof of Deployment
+
+The smart contract for portfolio allocation has been successfully deployed on the IOTA EVM testnet. You can verify the deployment using the following link:
+
+- **Proof of Deployment**: [View on IOTA Testnet Explorer](https://explorer.evm.testnet.iotaledger.net/address/0x2921dbEd807E9ADfF57885a6666d82d6e6596AC2)
+
 ## Usage Guidelines & Disclaimer
 
 - Use AI insights as one of many research tools; always verify information from multiple sources.
