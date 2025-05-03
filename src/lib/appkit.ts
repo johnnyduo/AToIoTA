@@ -1,8 +1,6 @@
-// src/lib/appkit.ts
-import { createAppKit } from '@reown/appkit/react'
-import { createConfig, http } from 'wagmi'
-import { injected, walletConnect } from 'wagmi/connectors'
+// src/lib/appkit.ts (or config.ts)
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { createAppKit, useAppKit, useAppKitAccount, useAppKitEvents, useAppKitNetwork, useAppKitState, useAppKitTheme, useDisconnect, useWalletInfo } from '@reown/appkit/react'
 
 // Define IOTA EVM Testnet
 export const iotaTestnet = {
@@ -30,48 +28,29 @@ export const iotaTestnet = {
   },
 };
 
-// Project ID
-const projectId = '09fc7dba755d62670df0095c041ed441'
+// Project ID for WalletConnect
+export const projectId = '09fc7dba755d62670df0095c041ed441'
 
-// Networks
+// Define networks
 const networks = [iotaTestnet]
 
-// Create wagmi config
-export const wagmiConfig = createConfig({
-  chains: networks,
-  transports: {
-    [iotaTestnet.id]: http('https://json-rpc.evm.testnet.iotaledger.net'),
-  },
-  connectors: [
-    injected({
-      shimDisconnect: true,
-    }),
-    walletConnect({
-      projectId,
-    }),
-  ],
-  autoConnect: true
-});
-
-// Create Wagmi Adapter
+// Setup wagmi adapter
 export const wagmiAdapter = new WagmiAdapter({
   networks,
-  projectId,
-  wagmiConfig,
-  autoConnect: true
-});
+  projectId
+})
 
 // Create modal
 export const modal = createAppKit({
   adapters: [wagmiAdapter],
   networks,
-  projectId,
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
     url: 'https://atoiota.xyz',
     icons: ['https://img.icons8.com/3d-fluency/94/globe-africa.png']
   },
+  projectId,
   themeMode: 'dark',
   themeVariables: {
     '--w3m-accent': '#8B5CF6',
@@ -79,7 +58,7 @@ export const modal = createAppKit({
   features: {
     analytics: true
   }
-});
+})
 
 // Re-export hooks from @reown/appkit/react
 export {
@@ -91,4 +70,4 @@ export {
   useAppKitNetwork,
   useWalletInfo,
   useDisconnect
-} from '@reown/appkit/react'
+}

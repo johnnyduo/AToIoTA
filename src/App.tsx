@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
 import { WagmiProvider } from 'wagmi';
-import { wagmiConfig } from '@/lib/appkit';
+import { wagmiAdapter } from '@/lib/appkit';
 import { BlockchainProvider } from '@/contexts/BlockchainContext';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -36,7 +36,7 @@ function AppContent() {
 }
 
 const App = () => (
-  <WagmiProvider config={wagmiConfig}>
+  <WagmiProvider config={wagmiAdapter.wagmiConfig}>
     <QueryClientProvider client={queryClient}>
       <AppContent />
     </QueryClientProvider>

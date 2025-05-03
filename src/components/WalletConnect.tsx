@@ -1,9 +1,9 @@
 // src/components/WalletConnect.tsx
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { iotaTestnet, modal } from '@/lib/appkit'
+import { useAccount } from 'wagmi'
+import { modal, useDisconnect } from '@/lib/appkit'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Loader2, Wallet, ChevronDown } from 'lucide-react'
 import {
   DropdownMenu,
@@ -16,28 +16,14 @@ import {
 
 export function WalletConnect() {
   const { address, isConnected } = useAccount()
-  const { error } = useAccount()
   const { disconnect } = useDisconnect()
-  const { isPending: isConnecting, connectAsync } = useConnect()
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  
-  // Log connection status for debugging
-  useEffect(() => {
-    console.log('Wallet connection status:', {
-      isConnected,
-      address: address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : null,
-      modalAvailable: !!modal
-    });
-  }, [isConnected, address]);
 
-  // Handle connection errors
-  useEffect(() => {
-    if (error) {
-      console.error('Connection error:', error);
-      toast.error('Connection Error', error.message || 'Failed to connect wallet');
-    }
-  }, [error]);
+  const handleConnect = () => {
+    console.log('Opening wallet modal');
+    modal.open();
+  };
 
   const handleDisconnect = async () => {
     if (isDisconnecting) return;
@@ -46,6 +32,7 @@ export function WalletConnect() {
     setIsDropdownOpen(false);
     
     try {
+      console.log("Disconnecting wallet...");
       await disconnect();
       toast.success("Disconnected", "Your wallet has been disconnected successfully.");
     } catch (error) {
@@ -71,16 +58,6 @@ export function WalletConnect() {
   
   const getExplorerUrl = (address: string) => {
     return `https://explorer.evm.testnet.iotaledger.net/address/${address}`;
-  };
-
-  const handleConnect = () => {
-    try {
-      console.log('Opening wallet modal');
-      modal.open();
-    } catch (error) {
-      console.error('Connection error:', error);
-      toast.error('Connection Error', 'Failed to connect wallet. Please try again.');
-    }
   };
 
   if (isConnected) {
@@ -138,19 +115,9 @@ export function WalletConnect() {
     <Button 
       className="bg-gradient-button hover:opacity-90 font-medium"
       onClick={handleConnect}
-      disabled={isConnecting}
     >
-      {isConnecting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Connecting...
-        </>
-      ) : (
-        <>
-          <Wallet className="mr-2 h-4 w-4" />
-          Connect Wallet
-        </>
-      )}
+      <Wallet className="mr-2 h-4 w-4" />
+      Connect Wallet
     </Button>
   )
 }
