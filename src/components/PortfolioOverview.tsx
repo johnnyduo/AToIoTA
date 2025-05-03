@@ -5,21 +5,29 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Loader2, Droplets, WalletIcon } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useBlockchain } from '@/contexts/BlockchainContext';
-import { useAccount } from 'wagmi';
-import { ethers } from 'ethers';
+import { useAccount, useBalance } from 'wagmi';
+import { formatEther } from 'ethers'; // Import formatEther directly for ethers v6
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { modal } from '@/lib/appkit';
 
 const PortfolioOverview = () => {
   const { allocations, refreshAllocations } = useBlockchain();
   const { address, isConnected } = useAccount();
   
+  // Use wagmi's useBalance hook
+  const { data: balanceData, isLoading: isBalanceLoading } = useBalance({
+    address: address,
+    enabled: isConnected && !!address,
+  });
+  
   const [portfolioValue, setPortfolioValue] = useState(0);
   const [portfolioChange, setPortfolioChange] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
+  const [iotaPrice, setIotaPrice] = useState(0.18); // Default mock price
   
   const isPositive = portfolioChange > 0;
   
@@ -28,43 +36,46 @@ const PortfolioOverview = () => {
     refreshAllocations();
   }, [refreshAllocations]);
   
-  // Fetch wallet balance for portfolio value
+  // Fetch IOTA price from CoinGecko
   useEffect(() => {
-    const fetchBalance = async () => {
-      if (!isConnected || !address) {
-        // Use zero value if not connected
-        setPortfolioValue(0);
-        setPortfolioChange(0);
-        setIsLoading(false);
-        return;
-      }
-      
+    const fetchIotaPrice = async () => {
       try {
-        setIsLoading(true);
-        
-        // Get provider from window.ethereum (MetaMask)
-        const provider = new ethers.providers.Web3Provider((window as any).ethereum);
-        
-        // Get balance in wei
-        const balanceWei = await provider.getBalance(address);
-        
-        // Convert to ether
-        const balanceEth = ethers.utils.formatEther(balanceWei);
-        
-        // Fetch IOTA price from CoinGecko (or use a mock price for development)
-        let iotaPrice = 0.18; // Default mock price
-        
-        try {
-          const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=iota&vs_currencies=usd');
-          const data = await response.json();
-          iotaPrice = data.iota.usd;
-        } catch (error) {
-          console.error('Error fetching IOTA price:', error);
-          // Continue with mock price
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=iota&vs_currencies=usd');
+        const data = await response.json();
+        if (data && data.iota && data.iota.usd) {
+          setIotaPrice(data.iota.usd);
         }
+      } catch (error) {
+        console.error('Error fetching IOTA price:', error);
+        // Continue with mock price
+      }
+    };
+    
+    fetchIotaPrice();
+    
+    // Refresh price every 5 minutes
+    const intervalId = setInterval(fetchIotaPrice, 300000);
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Calculate portfolio value when balance or price changes
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setPortfolioValue(0);
+      setPortfolioChange(0);
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(isBalanceLoading);
+    
+    if (balanceData) {
+      try {
+        // Convert balance to number using ethers v6 syntax
+        const balanceInEth = parseFloat(formatEther(balanceData.value));
         
         // Calculate portfolio value
-        const calculatedValue = parseFloat(balanceEth) * iotaPrice;
+        const calculatedValue = balanceInEth * iotaPrice;
         
         // Set portfolio value
         setPortfolioValue(calculatedValue);
@@ -75,30 +86,13 @@ const PortfolioOverview = () => {
         
         // Update last updated time
         setLastUpdated(new Date());
-        
       } catch (error) {
-        console.error('Error fetching wallet balance:', error);
-        // Fallback to zero values
+        console.error('Error calculating portfolio value:', error);
         setPortfolioValue(0);
         setPortfolioChange(0);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    fetchBalance();
-    
-    // Set up a refresh interval (every 60 seconds) if connected
-    if (isConnected) {
-      const intervalId = setInterval(() => {
-        fetchBalance();
-        refreshAllocations(); // Also refresh allocations periodically
-      }, 60000);
-      
-      // Clean up interval on component unmount
-      return () => clearInterval(intervalId);
     }
-  }, [address, isConnected, refreshAllocations]);
+  }, [balanceData, isBalanceLoading, isConnected, address, iotaPrice]);
   
   // Format the portfolio data from allocations
   const portfolioData = allocations.map(item => ({
@@ -111,6 +105,12 @@ const PortfolioOverview = () => {
   const defaultPortfolioData = [
     { name: 'Connect Wallet', value: 100, color: '#6B7280' }
   ];
+  
+  const handleConnectWallet = () => {
+    if (modal) {
+      modal.open();
+    }
+  };
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -168,7 +168,11 @@ const PortfolioOverview = () => {
             {!isConnected && (
               <div className="col-span-2 flex flex-col items-center justify-center py-8">
                 <p className="text-muted-foreground mb-4">Connect your wallet to view your portfolio allocations</p>
-                <Button variant="outline" className="bg-nebula-600/20 hover:bg-nebula-600/30">
+                <Button 
+                  variant="outline" 
+                  className="bg-nebula-600/20 hover:bg-nebula-600/30"
+                  onClick={handleConnectWallet}
+                >
                   <WalletIcon className="h-4 w-4 mr-2" />
                   Connect Wallet
                 </Button>
