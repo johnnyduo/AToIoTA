@@ -1,16 +1,20 @@
 
-import { Droplets, Plus, Bot } from 'lucide-react';
+import { Droplets, Plus, Bot, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import WalletConnect from '@/components/WalletConnect';
+import WalletConnect from '@/components/WalletConnectWrapper';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { iotaTestnet } from '@/lib/chains';
 import { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import AIDocumentation from '@/components/AIDocumentation';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const DashboardHeader = () => {
   const [showAIDocumentation, setShowAIDocumentation] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleFaucetClick = () => {
     window.open('https://evm-toolkit.evm.testnet.iotaledger.net/', '_blank');
@@ -91,9 +95,76 @@ const DashboardHeader = () => {
     }
   };
 
+  // Actions buttons component to avoid duplication
+  const ActionButtons = () => (
+    <>
+      {/* AI Documentation Button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-gradient-to-r from-nebula-600 to-nebula-400 text-white border-none hover:opacity-90"
+              onClick={() => setShowAIDocumentation(true)}
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">AI Docs</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Learn about our AI capabilities</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      {/* Add Network Button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none hover:opacity-90"
+              onClick={handleAddNetwork}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Network</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Add IOTA EVM Testnet to MetaMask</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      {/* Faucet Button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none hover:opacity-90"
+              onClick={handleFaucetClick}
+            >
+              <Droplets className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Faucet</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Get testnet tokens for development</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <WalletConnect />
+    </>
+  );
+
   return (
     <>
-      <div className="flex items-center justify-between py-6 px-8">
+      <div className="flex items-center justify-between py-6 px-4 md:px-8">
         <div className="flex items-center space-x-3">
           <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center animate-pulse-glow">
             <span className="font-space text-white text-2xl font-bold">A</span>
@@ -101,68 +172,29 @@ const DashboardHeader = () => {
           <h1 className="text-3xl font-bold font-space cosmic-text">AToIoTA</h1>
         </div>
         
-        <div className="flex items-center space-x-4">
-          {/* AI Documentation Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-gradient-to-r from-nebula-600 to-nebula-400 text-white border-none hover:opacity-90"
-                  onClick={() => setShowAIDocumentation(true)}
-                >
-                  <Bot className="h-4 w-4 mr-2" />
-                  AI Docs
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Learn about our AI capabilities</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Add Network Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none hover:opacity-90"
-                  onClick={handleAddNetwork}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Network
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Add IOTA EVM Testnet to MetaMask</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Faucet Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none hover:opacity-90"
-                  onClick={handleFaucetClick}
-                >
-                  <Droplets className="h-4 w-4 mr-2" />
-                  Faucet
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Get testnet tokens for development</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <WalletConnect />
+        {/* Desktop actions */}
+        <div className="hidden md:flex items-center space-x-4">
+          <ActionButtons />
+        </div>
+
+        {/* Mobile hamburger menu */}
+        <div className="md:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="p-2"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[250px]">
+              <div className="flex flex-col space-y-4 mt-8">
+                <ActionButtons />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
