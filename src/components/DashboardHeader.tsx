@@ -1,4 +1,3 @@
-
 import { Droplets, Plus, Bot, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WalletConnectWrapper from '@/components/WalletConnectWrapper';
@@ -6,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { iotaTestnet } from '@/lib/chains';
 import { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import AIDocumentation from '@/components/AIDocumentation';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -175,29 +174,39 @@ const DashboardHeader = () => {
           {/* Wallet Connect button always visible */}
           <WalletConnectWrapper />
 
+          <div className="hidden md:flex items-center space-x-4">
+            <ActionButtons />
+          </div>
+
           {/* Mobile hamburger menu */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="p-2"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[250px]">
-              <div className="flex flex-col space-y-4 mt-8">
-                <ActionButtons />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <div className="flex md:hidden items-center space-x-4">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="p-2"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[250px]">
+                <div className="flex flex-col space-y-4 mt-8">
+                  <ActionButtons />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
 
       {/* AI Documentation Modal */}
       <Dialog open={showAIDocumentation} onOpenChange={setShowAIDocumentation}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI Documentation</DialogTitle>
+            <DialogDescription>Explore the AI-powered features and documentation.</DialogDescription>
+          </DialogHeader>
           <AIDocumentation />
         </DialogContent>
       </Dialog>

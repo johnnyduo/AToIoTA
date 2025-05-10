@@ -1,4 +1,3 @@
-
 // Since WalletConnect.tsx is a read-only file, we won't be able to modify it directly.
 // Let's create our own custom WalletConnectWrapper that extends the functionality
 
@@ -7,6 +6,7 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import React from 'react';
 
 // This component will override the success toast when disconnecting wallet
 // It will be imported in place of the original WalletConnect component
@@ -41,10 +41,13 @@ const WalletConnectWrapper = () => {
   };
 
   if (!isConnected) {
-    // We'll use the original WalletConnect component for this case
-    // Import the original component directly
-    const OriginalWalletConnect = require('./WalletConnect').default;
-    return <OriginalWalletConnect />;
+    // Dynamically import the original WalletConnect component
+    const OriginalWalletConnect = React.lazy(() => import('./WalletConnect'));
+    return (
+      <React.Suspense fallback={<Button variant="outline" size="sm">Connect Wallet</Button>}>
+        <OriginalWalletConnect />
+      </React.Suspense>
+    );
   }
 
   return (
