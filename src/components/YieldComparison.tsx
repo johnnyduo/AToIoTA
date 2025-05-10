@@ -1,9 +1,11 @@
+
 // src/components/YieldComparison.tsx
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, WalletIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Mock data for connected wallet
 const mockData = [
@@ -27,6 +29,7 @@ const predictionOnlyData = [
 
 const YieldComparison = () => {
   const { isConnected } = useAccount();
+  const isMobile = useIsMobile();
   
   // Use full data if connected, prediction-only if disconnected
   const data = isConnected ? mockData : predictionOnlyData;
@@ -35,10 +38,10 @@ const YieldComparison = () => {
     <Card className="card-glass">
       <CardHeader>
         <div className="flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5 text-nebula-400" />
+          <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-nebula-400" />
           <div>
-            <CardTitle className="text-2xl">Yield Performance</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg md:text-2xl">Yield Performance</CardTitle>
+            <CardDescription className="text-xs md:text-sm">
               {isConnected 
                 ? "Actual vs AI-Optimized vs Predicted Yield" 
                 : "AI Predicted Yield (Connect wallet for full comparison)"}
@@ -48,76 +51,94 @@ const YieldComparison = () => {
       </CardHeader>
       <CardContent>
         {!isConnected ? (
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+              <LineChart 
+                data={data} 
+                margin={{ 
+                  top: 20, 
+                  right: isMobile ? 5 : 30, 
+                  left: isMobile ? -20 : 0, 
+                  bottom: 0 
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis 
                   dataKey="month" 
                   stroke="rgba(255,255,255,0.5)"
-                  tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
+                  tickMargin={isMobile ? 5 : 10}
                 />
                 <YAxis 
                   stroke="rgba(255,255,255,0.5)"
-                  tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
                   tickFormatter={(value) => `${value}%`}
+                  width={isMobile ? 30 : 40}
                 />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'rgba(17, 17, 17, 0.9)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '8px',
+                    fontSize: isMobile ? '10px' : '12px',
                   }}
                   labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: isMobile ? '10px' : '12px' }} />
                 <Line 
                   type="monotone" 
                   dataKey="predictedYield" 
                   stroke="#EC4899" 
                   name="Predicted"
                   strokeWidth={2}
-                  dot={{ fill: '#EC4899' }}
+                  dot={{ fill: '#EC4899', r: isMobile ? 3 : 4 }}
                   strokeDasharray="5 5"
                 />
               </LineChart>
             </ResponsiveContainer>
-            
-            <div className="flex justify-center mt-4">
-              {/* Removed content */}
-            </div>
           </div>
         ) : (
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+              <LineChart 
+                data={data} 
+                margin={{ 
+                  top: 20, 
+                  right: isMobile ? 5 : 30, 
+                  left: isMobile ? -20 : 0, 
+                  bottom: 0 
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis 
                   dataKey="month" 
                   stroke="rgba(255,255,255,0.5)"
-                  tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
+                  tickMargin={isMobile ? 5 : 10}
                 />
                 <YAxis 
                   stroke="rgba(255,255,255,0.5)"
-                  tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
                   tickFormatter={(value) => `${value}%`}
+                  width={isMobile ? 30 : 40}
                 />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'rgba(17, 17, 17, 0.9)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '8px',
+                    fontSize: isMobile ? '10px' : '12px',
                   }}
                   labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: isMobile ? '10px' : '12px' }} />
                 <Line 
                   type="monotone" 
                   dataKey="actualYield" 
                   stroke="#10B981" 
                   name="Actual Yield"
                   strokeWidth={2}
-                  dot={{ fill: '#10B981' }}
+                  dot={{ fill: '#10B981', r: isMobile ? 3 : 4 }}
                 />
                 <Line 
                   type="monotone" 
@@ -125,7 +146,7 @@ const YieldComparison = () => {
                   stroke="#8B5CF6" 
                   name="AI-Optimized"
                   strokeWidth={2}
-                  dot={{ fill: '#8B5CF6' }}
+                  dot={{ fill: '#8B5CF6', r: isMobile ? 3 : 4 }}
                 />
                 <Line 
                   type="monotone" 
@@ -133,7 +154,7 @@ const YieldComparison = () => {
                   stroke="#EC4899" 
                   name="Predicted"
                   strokeWidth={2}
-                  dot={{ fill: '#EC4899' }}
+                  dot={{ fill: '#EC4899', r: isMobile ? 3 : 4 }}
                   strokeDasharray="5 5"
                 />
               </LineChart>

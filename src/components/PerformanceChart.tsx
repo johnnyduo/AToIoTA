@@ -1,3 +1,4 @@
+
 // src/components/PerformanceChart.tsx
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,7 @@ import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianG
 import { Button } from '@/components/ui/button';
 import { useAccount } from 'wagmi';
 import { WalletIcon } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const timeRanges = [
   { id: '1d', name: '1D' },
@@ -131,9 +133,9 @@ const neutralChartData: Record<string, ChartData[]> = {
 const customTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="custom-tooltip bg-background border border-[#ffffff1a] p-3 rounded-md shadow-lg">
-        <p className="label font-roboto-mono text-sm">{`${label}`}</p>
-        <p className="value font-space font-bold text-nebula-400">{`$${payload[0].value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</p>
+      <div className="custom-tooltip bg-background border border-[#ffffff1a] p-2 md:p-3 rounded-md shadow-lg">
+        <p className="label font-roboto-mono text-xs md:text-sm">{`${label}`}</p>
+        <p className="value font-space font-bold text-nebula-400 text-xs md:text-sm">{`$${payload[0].value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</p>
       </div>
     );
   }
@@ -144,21 +146,22 @@ const customTooltip = ({ active, payload, label }: any) => {
 const PerformanceChart = () => {
   const [timeRange, setTimeRange] = useState('1m');
   const { isConnected } = useAccount();
+  const isMobile = useIsMobile();
   
   // Use neutral data if wallet is not connected
   const data = isConnected ? mockChartData[timeRange] : neutralChartData[timeRange];
   
   return (
     <Card className="card-glass">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-2xl">Portfolio Performance</CardTitle>
-        <div className="flex space-x-1">
+      <CardHeader className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row items-center justify-between'}`}>
+        <CardTitle className="text-lg md:text-2xl">Portfolio Performance</CardTitle>
+        <div className="flex overflow-x-auto space-x-1">
           {timeRanges.map((range) => (
             <Button
               key={range.id}
               variant="ghost"
               size="sm"
-              className={`px-3 rounded-lg ${
+              className={`px-2 md:px-3 rounded-lg text-xs md:text-sm ${
                 timeRange === range.id 
                 ? 'bg-nebula-600 text-white' 
                 : 'hover:bg-white/10'
@@ -173,18 +176,26 @@ const PerformanceChart = () => {
       </CardHeader>
       <CardContent className="pt-0">
         {!isConnected ? (
-          <div className="h-[300px] w-full flex flex-col items-center justify-center">
-            <WalletIcon className="h-12 w-12 text-gray-500 mb-4" />
-            <p className="text-muted-foreground text-center">Connect your wallet to view your portfolio performance</p>
-            <Button variant="outline" className="mt-4 bg-nebula-600/20 hover:bg-nebula-600/30">
-              <WalletIcon className="h-4 w-4 mr-2" />
+          <div className="h-[250px] md:h-[300px] w-full flex flex-col items-center justify-center">
+            <WalletIcon className="h-8 w-8 md:h-12 md:w-12 text-gray-500 mb-4" />
+            <p className="text-muted-foreground text-center text-xs md:text-sm px-4">Connect your wallet to view your portfolio performance</p>
+            <Button variant="outline" className="mt-4 bg-nebula-600/20 hover:bg-nebula-600/30 text-xs md:text-sm">
+              <WalletIcon className="h-3 w-3 md:h-4 md:w-4 mr-2" />
               Connect Wallet
             </Button>
           </div>
         ) : (
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart 
+                data={data} 
+                margin={{ 
+                  top: 10, 
+                  right: isMobile ? 5 : 10, 
+                  left: isMobile ? -20 : 0, 
+                  bottom: 0 
+                }}
+              >
                 <defs>
                   <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
@@ -193,17 +204,18 @@ const PerformanceChart = () => {
                 </defs>
                 <XAxis 
                   dataKey="date" 
-                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
                   axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                   tickLine={false}
+                  tickMargin={isMobile ? 5 : 10}
                 />
                 <YAxis 
                   domain={[(dataMin: number) => dataMin * 0.95, (dataMax: number) => dataMax * 1.05 || 100]}
-                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+                  tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: isMobile ? 10 : 12 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                  width={60}
+                  width={isMobile ? 40 : 60}
                 />
                 <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <Tooltip content={customTooltip} />

@@ -44,6 +44,11 @@
   * {
     @apply border-border;
   }
+  
+  html, body {
+    @apply overflow-x-hidden;
+  }
+  
   body {
     @apply bg-background text-foreground;
     background-image: radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.2), transparent 40%), 
@@ -64,7 +69,7 @@
   }
   
   .token-card {
-    @apply bg-gradient-card rounded-xl border border-[#ffffff1a] p-4 backdrop-blur-md transition-all duration-300 hover:shadow-glow;
+    @apply bg-gradient-card rounded-xl border border-[#ffffff1a] p-3 md:p-4 backdrop-blur-md transition-all duration-300 hover:shadow-glow;
   }
   
   .glow-border {
@@ -80,10 +85,27 @@
   }
   
   .chart-container {
-    @apply bg-gradient-card rounded-xl border border-[#ffffff1a] p-4 backdrop-blur-md;
+    @apply bg-gradient-card rounded-xl border border-[#ffffff1a] p-3 md:p-4 backdrop-blur-md;
   }
   
   .input-dark {
     @apply bg-muted border-[#ffffff1a] focus:border-nebula-500 focus:ring-1 focus:ring-nebula-500;
+  }
+
+  /* Mobile specific styles */
+  @media (max-width: 768px) {
+    .container {
+      @apply px-2;
+    }
+    
+    /* Adjust responsive font sizes */
+    h1 { @apply text-2xl; }
+    h2 { @apply text-xl; }
+    h3 { @apply text-lg; }
+    
+    /* Make tables horizontally scrollable on mobile */
+    .table-container {
+      @apply overflow-x-auto;
+    }
   }
 }
