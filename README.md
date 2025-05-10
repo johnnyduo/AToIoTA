@@ -160,6 +160,7 @@ ElizaOS Plugin Hybrid
 Enhanced data visualization
 Additional DeFi protocol integrations
 Advanced whale tracking features
+Mobile support
 
 - Q4 2025: 
 Mainnet deployment
