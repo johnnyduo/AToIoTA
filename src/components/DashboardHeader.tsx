@@ -95,7 +95,7 @@ const DashboardHeader = () => {
     }
   };
 
-  // Actions buttons component to avoid duplication
+  // Actions buttons component to move into hamburger menu
   const ActionButtons = () => (
     <>
       {/* AI Documentation Button */}
@@ -105,11 +105,11 @@ const DashboardHeader = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="bg-gradient-to-r from-nebula-600 to-nebula-400 text-white border-none hover:opacity-90"
+              className="bg-gradient-to-r from-nebula-600 to-nebula-400 text-white border-none hover:opacity-90 w-full md:w-auto justify-start md:justify-center"
               onClick={() => setShowAIDocumentation(true)}
             >
               <Bot className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">AI Docs</span>
+              <span>AI Docs</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -125,11 +125,11 @@ const DashboardHeader = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none hover:opacity-90"
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none hover:opacity-90 w-full md:w-auto justify-start md:justify-center"
               onClick={handleAddNetwork}
             >
               <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Network</span>
+              <span>Add Network</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -145,11 +145,11 @@ const DashboardHeader = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none hover:opacity-90"
+              className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none hover:opacity-90 w-full md:w-auto justify-start md:justify-center"
               onClick={handleFaucetClick}
             >
               <Droplets className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Faucet</span>
+              <span>Faucet</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -157,8 +157,6 @@ const DashboardHeader = () => {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      
-      <WalletConnectWrapper />
     </>
   );
 
@@ -172,13 +170,12 @@ const DashboardHeader = () => {
           <h1 className="text-3xl font-bold font-space cosmic-text">AToIoTA</h1>
         </div>
         
-        {/* Desktop actions */}
-        <div className="hidden md:flex items-center space-x-4">
-          <ActionButtons />
-        </div>
+        {/* Right side with wallet connect always visible and hamburger for other options */}
+        <div className="flex items-center space-x-4">
+          {/* Wallet Connect button always visible */}
+          <WalletConnectWrapper />
 
-        {/* Mobile hamburger menu */}
-        <div className="md:hidden">
+          {/* Mobile hamburger menu */}
           <Sheet>
             <SheetTrigger asChild>
               <Button 
