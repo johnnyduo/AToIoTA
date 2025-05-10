@@ -1,19 +1,15 @@
 
-// Since WalletConnect.tsx is a read-only file, we won't be able to modify it directly.
-// Let's create our own custom WalletConnectWrapper that extends the functionality
-
 import { useState } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
+import WalletConnect from './WalletConnect';
 
-// This component will override the success toast when disconnecting wallet
-// It will be imported in place of the original WalletConnect component
+// This component wraps the original WalletConnect component
+// to modify its behavior when disconnecting
 const WalletConnectWrapper = () => {
   const { address, isConnected } = useAccount();
   const { disconnectAsync } = useDisconnect();
-  const isMobile = useIsMobile();
 
   const handleDisconnect = async () => {
     try {
@@ -28,7 +24,8 @@ const WalletConnectWrapper = () => {
   const handleCopyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success('Address Copied', {
+      toast({
+        title: 'Address Copied',
         description: 'Your wallet address has been copied to clipboard.'
       });
     }
@@ -41,10 +38,7 @@ const WalletConnectWrapper = () => {
   };
 
   if (!isConnected) {
-    // We'll use the original WalletConnect component for this case
-    // Import the original component directly
-    const OriginalWalletConnect = require('./WalletConnect').default;
-    return <OriginalWalletConnect />;
+    return <WalletConnect />;
   }
 
   return (
