@@ -1,8 +1,9 @@
 
 // src/lib/contractService.ts
-import { useContractRead, useWriteContract, useWaitForTransactionReceipt, useAccount, getChainId } from 'wagmi';
+import { useContractRead, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
 import { ethers, BrowserProvider, Contract } from 'ethers'; // Import from ethers v6
 import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
+import { iotaTestnet } from './chains';
 
 // Contract address from environment variable
 export const PORTFOLIO_CONTRACT_ADDRESS = (import.meta.env.VITE_PORTFOLIO_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`;
@@ -164,12 +165,14 @@ export function useIsContractOwner() {
 export function useUpdateAllocations() {
   const { address, isConnected } = useAccount();
   const { isOwner } = useIsContractOwner();
+  const chainId = useChainId();
   
   console.log('useUpdateAllocations init:', {
     address,
     isConnected,
     isOwner,
-    contractAddress: PORTFOLIO_CONTRACT_ADDRESS
+    contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
+    chainId,
   });
   
   // Use the updated wagmi v2 useWriteContract hook
@@ -215,9 +218,6 @@ export function useUpdateAllocations() {
       const percentages = allocations.map(a => BigInt(a.allocation));
 
       console.log('Calling contract with args:', { categories, percentages });
-
-      // Get the current chain ID
-      const chainId = await getChainId();
       
       // Call the contract using wagmi with the writeContractAsync function
       // Include required account and chain properties
@@ -226,7 +226,7 @@ export function useUpdateAllocations() {
         address: PORTFOLIO_CONTRACT_ADDRESS,
         functionName: 'updateAllocations',
         args: [categories, percentages],
-        chain: { id: chainId },
+        chain: iotaTestnet, // Use the fully defined chain object
         account: address
       });
 
