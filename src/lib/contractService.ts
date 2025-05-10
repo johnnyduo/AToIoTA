@@ -1,5 +1,6 @@
+
 // src/lib/contractService.ts
-import { useContractRead, useContractWrite, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useContractRead, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { ethers, BrowserProvider, Contract } from 'ethers'; // Import from ethers v6
 import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
 
@@ -171,13 +172,8 @@ export function useUpdateAllocations() {
     contractAddress: PORTFOLIO_CONTRACT_ADDRESS
   });
   
-  const contractWrite = useContractWrite({
-    address: PORTFOLIO_CONTRACT_ADDRESS,
-    abi: AutomatedPortfolioABI,
-    functionName: 'updateAllocations',
-  });
-
-  const { isPending, error, isSuccess, data, status } = contractWrite;
+  // Use the updated wagmi v2 useWriteContract hook
+  const { writeContractAsync, isPending, error, isSuccess, data, status } = useWriteContract();
 
   const updateAllocationsFn = async (allocations: Allocation[]) => {
     console.log('updateAllocations called with:', {
@@ -185,8 +181,7 @@ export function useUpdateAllocations() {
       isConnected,
       address,
       isOwner,
-      contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
-      writeExists: typeof contractWrite.write === 'function'
+      contractAddress: PORTFOLIO_CONTRACT_ADDRESS
     });
 
     // Check if wallet is connected
@@ -209,7 +204,7 @@ export function useUpdateAllocations() {
     }
 
     // Try direct ethers.js approach if wagmi's write is not available
-    if (typeof contractWrite.write !== 'function') {
+    if (!writeContractAsync) {
       console.log('wagmi write not available, using direct ethers.js approach');
       return updateAllocations(allocations);
     }
@@ -222,12 +217,15 @@ export function useUpdateAllocations() {
       console.log('Calling contract with args:', { categories, percentages });
 
       // Call the contract using wagmi with the write function
-      const tx = await contractWrite.write({
+      const hash = await writeContractAsync({
+        address: PORTFOLIO_CONTRACT_ADDRESS,
+        abi: AutomatedPortfolioABI,
+        functionName: 'updateAllocations',
         args: [categories, percentages],
       });
 
-      console.log('Transaction submitted:', tx);
-      return tx;
+      console.log('Transaction submitted:', hash);
+      return { hash };
     } catch (error) {
       console.error('Error updating allocations with wagmi:', error);
       // Fall back to direct ethers.js approach if wagmi fails

@@ -1,3 +1,4 @@
+
 // src/contexts/BlockchainContext.tsx
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
@@ -187,9 +188,13 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       
       // Show success message
       if (status === 'confirmed') {
-        toast.success("Transaction Confirmed: Your allocation changes have been confirmed on the blockchain.");
+        toast.success("Transaction Confirmed", {
+          description: "Your allocation changes have been confirmed on the blockchain."
+        });
       } else {
-        toast.error("Transaction Failed: Your allocation changes failed to process on the blockchain.");
+        toast.error("Transaction Failed", {
+          description: "Your allocation changes failed to process on the blockchain."
+        });
       }
     }
   }, [isConfirmed, pendingTxHash, receipt]);
@@ -230,14 +235,16 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     });
     
     if (!isConnected) {
-      toast.error("Wallet Not Connected", "Please connect your wallet to update portfolio allocations.");
+      toast.error("Wallet Not Connected", {
+        description: "Please connect your wallet to update portfolio allocations."
+      });
       return false;
     }
     
     if (!isContractOwner) {
       toast.error(
         "Not Contract Owner", 
-        "Only the contract owner can update allocations."
+        { description: "Only the contract owner can update allocations." }
       );
       return false;
     }
@@ -248,7 +255,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     if (!allocationsToUse) {
       // Only show this toast if not called from modal (to avoid duplicate messages)
       if (!fromModal) {
-        toast.error("No Changes", "There are no pending allocation changes to apply.");
+        toast.error("No Changes", {
+          description: "There are no pending allocation changes to apply."
+        });
       }
       return false;
     }
@@ -259,7 +268,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     // Validate total allocation is 100%
     const total = allocationsToSubmit.reduce((sum, item) => sum + item.allocation, 0);
     if (total !== 100) {
-      toast.error("Invalid Allocation", `Total allocation must be 100%. Current total: ${total}%`);
+      toast.error("Invalid Allocation", {
+        description: `Total allocation must be 100%. Current total: ${total}%`
+      });
       return false;
     }
     
@@ -284,7 +295,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       console.log('No changes detected between current and pending allocations');
       // Only show this toast if not called from modal (to avoid duplicate messages)
       if (!fromModal) {
-        toast.info("No Changes Detected", "Your allocations match the current portfolio. No update needed.");
+        toast.info("No Changes Detected", {
+          description: "Your allocations match the current portfolio. No update needed."
+        });
       }
       // Clear pending allocations since they match current state
       setPendingAllocations(null);
@@ -344,20 +357,24 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
         // Show toast with link to explorer
         toast.success(
           fromModal ? "Portfolio Rebalance Submitted" : "Transaction Submitted", 
-          <div>
-            {fromModal 
-              ? "Your allocation changes have been submitted to the blockchain." 
-              : "Transaction has been submitted to the blockchain."
-            }{' '}
-            <a 
-              href={getExplorerUrl(tx.hash)} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              View on Explorer
-            </a>
-          </div>
+          {
+            description: (
+              <div>
+                {fromModal 
+                  ? "Your allocation changes have been submitted to the blockchain." 
+                  : "Transaction has been submitted to the blockchain."
+                }{' '}
+                <a 
+                  href={getExplorerUrl(tx.hash)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  View on Explorer
+                </a>
+              </div>
+            )
+          }
         );
         
         return true;
@@ -378,7 +395,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
           // Show a different toast for user cancellation
           toast.info(
             "Transaction Cancelled", 
-            "You cancelled the transaction. No changes were made to your portfolio."
+            { description: "You cancelled the transaction. No changes were made to your portfolio." }
           );
         } else {
           // For other errors, show the error toast
@@ -387,7 +404,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
           
           toast.error(
             "Transaction Failed", 
-            error.message || "Failed to update allocations. Please try again."
+            { description: error.message || "Failed to update allocations. Please try again." }
           );
         }
         
@@ -410,7 +427,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
         }
       });
       
-      toast.error("Update Failed", error.message || "Failed to update allocations. Please try again.");
+      toast.error("Update Failed", { 
+        description: error.message || "Failed to update allocations. Please try again."
+      });
       
       return false;
     } finally {

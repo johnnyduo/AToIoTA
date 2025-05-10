@@ -1,3 +1,4 @@
+
 // src/components/AllocationAdjuster.tsx
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +58,9 @@ const AllocationAdjuster = () => {
   
   const handleApplyChanges = async () => {
     if (total !== 100) {
-      toast.error("Invalid Allocation", `Total allocation must be 100%. Current total: ${total}%`);
+      toast.error("Invalid Allocation", {
+        description: `Total allocation must be 100%. Current total: ${total}%`
+      });
       return;
     }
     
@@ -69,7 +72,9 @@ const AllocationAdjuster = () => {
       const success = await applyAllocations();
       
       if (success) {
-        toast.success("Allocations Updated", "Your portfolio has been rebalanced successfully!");
+        toast.success("Allocations Updated", {
+          description: "Your portfolio has been rebalanced successfully!"
+        });
         
         // Reset changes flag
         setHasChanges(false);
@@ -83,7 +88,9 @@ const AllocationAdjuster = () => {
       console.error('Error applying allocations:', error);
       toast.error(
         "Update Failed", 
-        error instanceof Error ? error.message : "Failed to update allocations. Please try again."
+        {
+          description: error instanceof Error ? error.message : "Failed to update allocations. Please try again."
+        }
       );
     }
   };

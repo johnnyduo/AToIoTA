@@ -1,3 +1,4 @@
+
 // src/components/WalletConnect.tsx
 import { useAccount } from 'wagmi'
 import { modal, useDisconnect } from '@/lib/appkit'
@@ -27,11 +28,15 @@ export function WalletConnect() {
         modal.open();
       } else {
         console.error('Wallet modal is not available');
-        toast.error('Connection Error', 'Wallet connection is not available.');
+        toast.error('Connection Error', {
+          description: 'Wallet connection is not available.'
+        });
       }
     } catch (error) {
       console.error('Connection error:', error);
-      toast.error('Connection Error', 'Failed to connect wallet. Please try again.');
+      toast.error('Connection Error', {
+        description: 'Failed to connect wallet. Please try again.'
+      });
     }
   };
 
@@ -44,10 +49,14 @@ export function WalletConnect() {
     try {
       console.log("Disconnecting wallet...");
       await disconnect();
-      toast.success("Disconnected", "Your wallet has been disconnected successfully.");
+      toast.success("Disconnected", {
+        description: "Your wallet has been disconnected successfully."
+      });
     } catch (error) {
       console.error('Disconnect error:', error);
-      toast.error('Disconnect Error', 'Failed to disconnect wallet.');
+      toast.error('Disconnect Error', {
+        description: 'Failed to disconnect wallet.'
+      });
     } finally {
       setIsDisconnecting(false);
     }
@@ -61,7 +70,9 @@ export function WalletConnect() {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success("Address Copied", "Your wallet address has been copied to clipboard.");
+      toast.success("Address Copied", {
+        description: "Your wallet address has been copied to clipboard."
+      });
       setIsDropdownOpen(false);
     }
   };

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -179,7 +180,9 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
     }
     
     if (total !== 100) {
-      toast.error("Invalid Allocation", "Total allocation must equal 100%");
+      toast.error("Invalid Allocation", {
+        description: "Total allocation must equal 100%"
+      });
       return;
     }
     
@@ -209,7 +212,9 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       
       if (!hasRealChanges) {
         console.log('No real changes detected, showing toast and closing modal');
-        toast.info("No Changes Detected", "Your allocations match the current portfolio. No update needed.");
+        toast.info("No Changes Detected", {
+          description: "Your allocations match the current portfolio. No update needed."
+        });
         onOpenChange(false);
         setIsApplying(false);
         return;
@@ -241,10 +246,9 @@ const AdjustmentModal = ({ open, onOpenChange, action }: AdjustmentModalProps) =
       }
     } catch (error) {
       console.error('Error applying allocations:', error);
-      toast.error(
-        "Update Failed", 
-        error instanceof Error ? error.message : "Failed to update allocations. Please try again."
-      );
+      toast.error("Update Failed", {
+        description: error instanceof Error ? error.message : "Failed to update allocations. Please try again."
+      });
       
       // Reset transaction state so user can try again
       setTransactionSubmitted(false);

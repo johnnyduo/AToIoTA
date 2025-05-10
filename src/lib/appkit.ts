@@ -1,6 +1,8 @@
+
 // src/lib/appkit.ts
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { createAppKit, useAppKit, useAppKitAccount, useAppKitEvents, useAppKitNetwork, useAppKitState, useAppKitTheme, useDisconnect, useWalletInfo } from '@reown/appkit/react'
+import { type AppKitNetwork } from '@reown/appkit'
 
 // Define IOTA EVM Testnet
 export const iotaTestnet = {
@@ -60,11 +62,12 @@ if (typeof window !== 'undefined') {
 }
 
 // Define networks as a tuple with at least one element
-const networks = [iotaTestnet] as const;
+// Use type assertions to handle the readonly issue
+const networks = [iotaTestnet] as unknown as [AppKitNetwork, ...AppKitNetwork[]];
 
 // Setup wagmi adapter
 export const wagmiAdapter = new WagmiAdapter({
-  networks,
+  networks: [iotaTestnet] as unknown as AppKitNetwork[],
   projectId
 });
 

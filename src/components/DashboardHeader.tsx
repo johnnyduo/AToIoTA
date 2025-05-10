@@ -1,3 +1,4 @@
+
 import { Droplets, Plus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WalletConnect from '@/components/WalletConnect';
@@ -18,7 +19,9 @@ const DashboardHeader = () => {
   const handleAddNetwork = async () => {
     // Check if MetaMask is installed
     if (typeof window.ethereum === 'undefined') {
-      toast.error('MetaMask Not Found', 'Please install MetaMask to add the IOTA EVM Testnet.');
+      toast.error('MetaMask Not Found', {
+        description: 'Please install MetaMask to add the IOTA EVM Testnet.'
+      });
       return;
     }
 
@@ -32,7 +35,9 @@ const DashboardHeader = () => {
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: chainIdHex }],
         });
-        toast.success('Network Switched', 'Successfully switched to IOTA EVM Testnet.');
+        toast.success('Network Switched', {
+          description: 'Successfully switched to IOTA EVM Testnet.'
+        });
         return;
       } catch (switchError: any) {
         // This error code indicates that the chain has not been added to MetaMask
@@ -65,7 +70,9 @@ const DashboardHeader = () => {
         params: [networkParams],
       });
       
-      toast.success('Network Added', 'IOTA EVM Testnet has been added to your wallet.');
+      toast.success('Network Added', {
+        description: 'IOTA EVM Testnet has been added to your wallet.'
+      });
     } catch (error: any) {
       console.error('Error adding network:', error);
       
@@ -73,12 +80,12 @@ const DashboardHeader = () => {
       if (error.message && error.message.includes('nativeCurrency.symbol does not match')) {
         toast.info(
           'Network Already Added', 
-          'The IOTA EVM Testnet is already in your wallet. Please switch to it manually.'
+          { description: 'The IOTA EVM Testnet is already in your wallet. Please switch to it manually.' }
         );
       } else {
         toast.error(
           'Failed to Add Network', 
-          error.message || 'Please try adding the network manually.'
+          { description: error.message || 'Please try adding the network manually.' }
         );
       }
     }
