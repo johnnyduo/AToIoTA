@@ -1,6 +1,6 @@
 
 // src/lib/contractService.ts
-import { useContractRead, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useContractRead, useWriteContract, useWaitForTransactionReceipt, useAccount, getChainId } from 'wagmi';
 import { ethers, BrowserProvider, Contract } from 'ethers'; // Import from ethers v6
 import AutomatedPortfolioABI from '../abi/AutomatedPortfolio.json';
 
@@ -216,12 +216,18 @@ export function useUpdateAllocations() {
 
       console.log('Calling contract with args:', { categories, percentages });
 
-      // Call the contract using wagmi with the write function
+      // Get the current chain ID
+      const chainId = await getChainId();
+      
+      // Call the contract using wagmi with the writeContractAsync function
+      // Include required account and chain properties
       const hash = await writeContractAsync({
-        address: PORTFOLIO_CONTRACT_ADDRESS,
         abi: AutomatedPortfolioABI,
+        address: PORTFOLIO_CONTRACT_ADDRESS,
         functionName: 'updateAllocations',
         args: [categories, percentages],
+        chain: { id: chainId },
+        account: address
       });
 
       console.log('Transaction submitted:', hash);

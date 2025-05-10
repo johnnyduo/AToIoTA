@@ -2,7 +2,32 @@
 // src/lib/appkit.ts
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { createAppKit, useAppKit, useAppKitAccount, useAppKitEvents, useAppKitNetwork, useAppKitState, useAppKitTheme, useDisconnect, useWalletInfo } from '@reown/appkit/react'
-import { type AppKitNetwork } from '@reown/appkit'
+
+// Define our own AppKitNetwork type since it's not exported from @reown/appkit
+type AppKitNetwork = {
+  id: number;
+  name: string;
+  network: string;
+  nativeCurrency: {
+    decimals: number;
+    name: string;
+    symbol: string;
+  };
+  rpcUrls: {
+    default: {
+      http: string[];
+    };
+    public: {
+      http: string[];
+    };
+  };
+  blockExplorers: {
+    default: {
+      name: string;
+      url: string;
+    };
+  };
+};
 
 // Define IOTA EVM Testnet
 export const iotaTestnet = {
@@ -61,20 +86,16 @@ if (typeof window !== 'undefined') {
   console.log('Using WalletConnect Project ID:', maskedId);
 }
 
-// Define networks as a tuple with at least one element
-// Use type assertions to handle the readonly issue
-const networks = [iotaTestnet] as unknown as [AppKitNetwork, ...AppKitNetwork[]];
-
-// Setup wagmi adapter
+// Setup wagmi adapter with correct type handling
 export const wagmiAdapter = new WagmiAdapter({
-  networks: [iotaTestnet] as unknown as AppKitNetwork[],
+  networks: [iotaTestnet] as AppKitNetwork[],
   projectId
 });
 
-// Create modal
+// Create modal with proper type handling
 export const modal = createAppKit({
   adapters: [wagmiAdapter],
-  networks,
+  networks: [iotaTestnet] as unknown as [AppKitNetwork, ...AppKitNetwork[]],
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
