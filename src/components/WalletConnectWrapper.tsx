@@ -24,8 +24,7 @@ const WalletConnectWrapper = () => {
   const handleCopyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast({
-        title: 'Address Copied',
+      toast.success('Address Copied', {
         description: 'Your wallet address has been copied to clipboard.'
       });
     }

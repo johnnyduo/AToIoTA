@@ -158,7 +158,7 @@ const DashboardHeader = () => {
         </Tooltip>
       </TooltipProvider>
       
-      <WalletConnect />
+      <WalletConnectWrapper />
     </>
   );
 
