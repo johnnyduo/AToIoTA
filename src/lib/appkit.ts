@@ -59,8 +59,8 @@ if (typeof window !== 'undefined') {
   console.log('Using WalletConnect Project ID:', maskedId);
 }
 
-// Define networks
-const networks = [iotaTestnet];
+// Define networks as a tuple with at least one element
+const networks = [iotaTestnet] as const;
 
 // Setup wagmi adapter
 export const wagmiAdapter = new WagmiAdapter({

@@ -172,6 +172,7 @@ export function useUpdateAllocations() {
   });
   
   const contractWrite = useContractWrite({
+    address: PORTFOLIO_CONTRACT_ADDRESS,
     abi: AutomatedPortfolioABI,
     functionName: 'updateAllocations',
   });
@@ -185,7 +186,7 @@ export function useUpdateAllocations() {
       address,
       isOwner,
       contractAddress: PORTFOLIO_CONTRACT_ADDRESS,
-      writeAsyncExists: typeof contractWrite.writeAsync === 'function'
+      writeExists: typeof contractWrite.write === 'function'
     });
 
     // Check if wallet is connected
@@ -207,9 +208,9 @@ export function useUpdateAllocations() {
       throw new Error('You are not the owner of this contract. Only the owner can update allocations.');
     }
 
-    // Try direct ethers.js approach if wagmi's writeAsync is not available
-    if (typeof contractWrite.writeAsync !== 'function') {
-      console.log('writeAsync not available, using direct ethers.js approach');
+    // Try direct ethers.js approach if wagmi's write is not available
+    if (typeof contractWrite.write !== 'function') {
+      console.log('wagmi write not available, using direct ethers.js approach');
       return updateAllocations(allocations);
     }
 
@@ -220,8 +221,8 @@ export function useUpdateAllocations() {
 
       console.log('Calling contract with args:', { categories, percentages });
 
-      // Call the contract using wagmi
-      const tx = await contractWrite.writeAsync({ 
+      // Call the contract using wagmi with the write function
+      const tx = await contractWrite.write({
         args: [categories, percentages],
       });
 

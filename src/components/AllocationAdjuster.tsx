@@ -57,11 +57,7 @@ const AllocationAdjuster = () => {
   
   const handleApplyChanges = async () => {
     if (total !== 100) {
-      toast({
-        title: "Invalid Allocation",
-        description: `Total allocation must be 100%. Current total: ${total}%`,
-        variant: "destructive"
-      });
+      toast.error("Invalid Allocation", `Total allocation must be 100%. Current total: ${total}%`);
       return;
     }
     
@@ -73,10 +69,7 @@ const AllocationAdjuster = () => {
       const success = await applyAllocations();
       
       if (success) {
-        toast({
-          title: "Allocations Updated",
-          description: "Your portfolio has been rebalanced successfully!"
-        });
+        toast.success("Allocations Updated", "Your portfolio has been rebalanced successfully!");
         
         // Reset changes flag
         setHasChanges(false);
@@ -88,11 +81,10 @@ const AllocationAdjuster = () => {
       }
     } catch (error) {
       console.error('Error applying allocations:', error);
-      toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update allocations. Please try again.",
-        variant: "destructive"
-      });
+      toast.error(
+        "Update Failed", 
+        error instanceof Error ? error.message : "Failed to update allocations. Please try again."
+      );
     }
   };
   

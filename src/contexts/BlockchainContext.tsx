@@ -237,7 +237,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     if (!isContractOwner) {
       toast.error(
         "Not Contract Owner", 
-        `Only the contract owner can update allocations.`
+        "Only the contract owner can update allocations."
       );
       return false;
     }
