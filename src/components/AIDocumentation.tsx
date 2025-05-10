@@ -42,7 +42,7 @@ const AIDocumentation = () => {
             </TabsList>
             
             <TabsContent value="overview" className="space-y-4">
-              <div className="prose prose-invert max-w-none">
+              <div className="prose prose-invert max-w-none pt-24 md:pt-4">
                 <h2 className="text-xl font-bold">AI-Powered DeFi Assistant</h2>
                 <p>
                   AToIoTA uses advanced artificial intelligence to transform how users interact with 
