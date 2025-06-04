@@ -13,7 +13,7 @@ const DashboardHeader = () => {
   const [showAIDocumentation, setShowAIDocumentation] = useState(false);
 
   const handleFaucetClick = () => {
-    window.open('https://evm-toolkit.evm.testnet.iotaledger.net/', '_blank');
+    window.open('https://testnet.evm-bridge.iota.org', '_blank');
   };
 
   const handleAddNetwork = async () => {
