@@ -16,7 +16,7 @@ const DashboardHeader = () => {
   const isMobile = useIsMobile();
 
   const handleFaucetClick = () => {
-    window.open('https://evm-toolkit.evm.testnet.iotaledger.net/', '_blank');
+    window.open('https://faucet.testnet.iota.cafe', '_blank');
   };
 
   const handleAddNetwork = async () => {
