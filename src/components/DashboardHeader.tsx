@@ -16,7 +16,7 @@ const DashboardHeader = () => {
   const isMobile = useIsMobile();
 
   const handleFaucetClick = () => {
-    window.open('https://faucet.testnet.iota.cafe', '_blank');
+    window.open('https://testnet.evm-bridge.iota.org/', '_blank');
   };
 
   const handleAddNetwork = async () => {
