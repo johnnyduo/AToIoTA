@@ -1,6 +1,6 @@
 // src/lib/chains.ts
 export const iotaTestnet = {
-  id: 1076,
+  id: 1075,
   name: 'IOTA EVM Testnet',
   network: 'iota-testnet',
   nativeCurrency: {
@@ -10,16 +10,16 @@ export const iotaTestnet = {
   },
   rpcUrls: {
     default: {
-      http: ['https://json-rpc.evm.testnet.iota.cafe'],
+      http: ['https://json-rpc.evm.testnet.iotaledger.net'],
     },
     public: {
-      http: ['https://json-rpc.evm.testnet.iota.cafe'],
+      http: ['https://json-rpc.evm.testnet.iotaledger.net'],
     },
   },
   blockExplorers: {
     default: {
       name: 'Explorer',
-      url: 'https://explorer.evm.testnet.iota.cafe/',
+      url: 'https://explorer.evm.testnet.iotaledger.net',
     },
   },
 };
