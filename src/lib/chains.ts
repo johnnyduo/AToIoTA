@@ -22,7 +22,4 @@ export const iotaTestnet = {
       url: 'https://explorer.evm.testnet.iota.cafe/',
     },
   },
-  toolkit: {
-    faucet: 'https://testnet.evm-bridge.iota.org',
-  },
 };
