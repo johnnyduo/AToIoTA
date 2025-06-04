@@ -75,7 +75,7 @@ export const modal = createAppKit({
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
-    url: typeof window !== 'undefined' ? window.location.origin : 'https://a-to-io-ta.vercel.app/',
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz/',
     icons: ['https://img.icons8.com/3d-fluency/94/globe-africa.png']
   },
   projectId,
