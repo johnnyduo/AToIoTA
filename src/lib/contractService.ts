@@ -259,12 +259,12 @@ export function useTransactionReceipt(hash?: `0x${string}`) {
 
 // Function to get explorer URL for a transaction
 export function getExplorerUrl(hash: string) {
-  const explorerUrl = import.meta.env.VITE_IOTA_EXPLORER_URL || 'https://explorer.evm.testnet.iotaledger.net';
+  const explorerUrl = import.meta.env.VITE_IOTA_EXPLORER_URL || 'https://explorer.evm.testnet.iota.cafe';
   return `${explorerUrl}/tx/${hash}`;
 }
 
 // Function to get explorer URL for an address
 export function getAddressExplorerUrl(address: string) {
-  const explorerUrl = import.meta.env.VITE_IOTA_EXPLORER_URL || 'https://explorer.evm.testnet.iotaledger.net';
+  const explorerUrl = import.meta.env.VITE_IOTA_EXPLORER_URL || 'https://explorer.evm.testnet.iota.cafe';
   return `${explorerUrl}/address/${address}`;
 }

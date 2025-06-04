@@ -231,11 +231,11 @@ const WhaleTracker = () => {
   };
 
   const getExplorerUrl = (hash: string) => {
-    return `https://explorer.evm.iota.org/tx/${hash || ''}`;
+    return `https://explorer.evm.testnet.iota.cafe/tx/${hash || ''}`;
   };
 
   const getAddressExplorerUrl = (address: string) => {
-    return `https://explorer.evm.iota.org/address/${address || ''}`;
+    return `https://explorer.evm.testnet.iota.cafe/${address || ''}`;
   };
 
   // Calculate statistics
