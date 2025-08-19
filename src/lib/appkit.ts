@@ -4,26 +4,26 @@ import { createAppKit, useAppKit, useAppKitAccount, useAppKitEvents, useAppKitNe
 
 // Define IOTA EVM Testnet
 export const iotaTestnet = {
-  id: 1075,
+  id: 1076,
   name: 'IOTA EVM Testnet',
   network: 'iota-testnet',
   nativeCurrency: {
     decimals: 18,
-    name: 'IOTA',
+    name: 'IOTA Token',
     symbol: 'MIOTA',
   },
   rpcUrls: {
     default: {
-      http: ['https://json-rpc.evm.testnet.iotaledger.net'],
+      http: ['https://json-rpc.evm.testnet.iota.cafe'],
     },
     public: {
-      http: ['https://json-rpc.evm.testnet.iotaledger.net'],
+      http: ['https://json-rpc.evm.testnet.iota.cafe'],
     },
   },
   blockExplorers: {
     default: {
       name: 'Explorer',
-      url: 'https://explorer.evm.testnet.iotaledger.net',
+      url: 'https://explorer.evm.testnet.iota.cafe',
     },
   },
 };
@@ -75,7 +75,7 @@ export const modal = createAppKit({
   metadata: {
     name: 'AToIoTA',
     description: 'AI-Powered Portfolio Allocation',
-    url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz',
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://atoiota.xyz/',
     icons: ['https://img.icons8.com/3d-fluency/94/globe-africa.png']
   },
   projectId,
